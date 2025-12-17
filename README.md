@@ -15,25 +15,40 @@ git --version
 Install from:
 https://www.python.org/downloads/
 Enable "Add Python to PATH"
+Update setting now? - Yes
+Add comands directory to your PATH now? - Yes
+Install CPython now? - Yes
 Check:
 python --version
 
 5. Node.js (v18 or v20 recommended)
 https://nodejs.org/
+Install: Windows Installer (.msi)
+In Tools for Native Modules: Do not mark Automatically install the necessary tools
 Check:
 node --version
 npm --version
+For check enter PowerShell as Administrator
+Write this command: Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
 **PROJECT SETUP**
 Clone repository:
+
 git clone https://github.com/siyanabandrova-dotcom/BlockBuild.git
+
+
 cd BlockBuild
+
+Check:
+git status
 
 **BACKEND SETUP**
 Create virtual environment:
+In BlockBuild folder: 
 python -m venv venv
 Activate:
 Windows: venv\Scripts\Activate
+Have to see: (venv) PS: ...
 Linux/macOS: source venv/bin/activate
 Install dependencies:
 pip install -r requirements.txt
@@ -44,8 +59,10 @@ http://localhost:8000
 Docs:
 http://localhost:8000/docs
 
+In other terminal
 **FRONTEND SETUP**
 Install dependencies:
+cd BlockBuild
 npm install
 Run frontend:
 npm start
