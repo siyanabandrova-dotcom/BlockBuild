@@ -5,6 +5,9 @@ The project consists of two main components:- Frontend – React application (vi
 1. Git (recommended)
 https://git-scm.com/downloads
 Install the first option: **Git for Windows (x64 Setup)**.
+For choosing the default editor used by Git: Use Visual Studio Code or Notepad as Git’s default editor.
+For Adjusting the name of the initial branch in new repositories: Select Override the default branch name fir new repositories.
+Another setting are as default.
 Check:
 git --version
 
