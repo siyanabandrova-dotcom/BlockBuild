@@ -1,27 +1,31 @@
 BlockBuild – Installation & Run Guide
 BlockBuild is a visual, block-based editor for designing neural network architectures.
 The project consists of two main components:- Frontend – React application (visual neural network editor)- Backend – FastAPI + PyTorch (model execution and training)
-REQUIRED SOFTWARE
+**REQUIRED SOFTWARE**
 1. Git (recommended)
 https://git-scm.com/downloads
 Check:
 git --version
-2. Python 3.10 or 3.11
+
+3. Python 3.10 or 3.11
 Install from:
 https://www.python.org/downloads/
 Enable "Add Python to PATH"
 Check:
 python --version
-3. Node.js (v18 or v20 recommended)
+
+5. Node.js (v18 or v20 recommended)
 https://nodejs.org/
 Check:
 node --version
 npm --version
-PROJECT SETUP
+
+**PROJECT SETUP**
 Clone repository:
 git clone https://github.com/siyanabandrova-dotcom/BlockBuild.git
 cd BlockBuild
-BACKEND SETUP
+
+**BACKEND SETUP**
 Create virtual environment:
 python -m venv venv
 Activate:
@@ -35,7 +39,8 @@ Backend URL:
 http://localhost:8000
 Docs:
 http://localhost:8000/docs
-FRONTEND SETUP
+
+**FRONTEND SETUP**
 Install dependencies:
 npm install
 Run frontend:
