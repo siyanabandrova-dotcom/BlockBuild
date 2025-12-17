@@ -4,6 +4,7 @@ The project consists of two main components:- Frontend – React application (vi
 **REQUIRED SOFTWARE**
 1. Git (recommended)
 https://git-scm.com/downloads
+Install the first option: **Git for Windows (x64 Setup)**.
 Check:
 git --version
 
