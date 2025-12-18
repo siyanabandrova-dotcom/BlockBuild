@@ -254,6 +254,8 @@ export default function App() {
     const s = sourceNode.data ?? {};
     const t = targetNode.data ?? {};
 
+    if(targetNode.type === "embedding") return false;
+
     if (targetNode.type === "conv" && t.dim === "1d" && sourceNode.type === "linear") {
       return (t.inChannels ?? null) === (s.outFeatures ?? null);
     }
