@@ -11,6 +11,7 @@ Another setting are as default.
 Check:
 ```bash
 git --version
+```
 
 3. Python 3.10 or 3.11
 Install from:
