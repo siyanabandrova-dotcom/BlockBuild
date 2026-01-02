@@ -3,7 +3,7 @@ import { Handle, Position } from "reactflow";
 import Dropout from "./Dropout";
 function Embedding({ data, id, setNodes}){
     const handleChange = (e) =>{
-        const value = parseInt(e.target, 10);
+        const value = parseInt(e.target.value, 10);
         if(isNaN(value) || value<=0) return;
 
         setNodes((nds) => 

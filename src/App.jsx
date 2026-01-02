@@ -12,16 +12,16 @@ import ReLU from "./ReLU.jsx";
 import Dropout from "./Dropout.jsx";
 import LayerNorm from './LayerNorm.jsx';
 import Embedding from './Embedding.jsx';
-import AddConvButton from "./AddConvButton.jsx";
 import ConvNode from "./Conv.jsx";
 import ConvTransposeNode from "./ConvTranspose.jsx";
-import AddConvTransposeButton from './AddConvTransposeButton.jsx';
 import AvgPool from "./AvgPool.jsx";
-import AddAvgPoolButton from './AddAvgPoolButton.jsx';
 import MaxPool from './MaxPool.jsx';
-import AddMaxPoolButton from "./AddMaxPoolButton.jsx";
 import AdaptiveAvgPool from "./AdaptiveAvgPool.jsx";
-import AddAdaptivePoolButton from "./AddAdaptiveAvgPoolButton.jsx";
+import AddLayerButton from "./AddLayerButton.jsx";
+import LayerNode from "./LayerNode";
+import TrainingDataInput from "./TrainingDataInput.jsx";
+import { parseSample, validateAllSamples } from "./parseSample.jsx";
+
 
 const NODE_WIDTH = 120;
 const NODE_HEIGHT = 50;
@@ -36,6 +36,18 @@ export default function App() {
   const [edges, setEdges] = useState([]);
   const [output, setOutput] = useState(null);
   const [epochs, setEpochs] = useState(20);
+  const [learningRate, setLearningRate] = useState(0.01);
+  const [inputValue, setInputValue] = useState("");
+  const [expectedValue, setExpectedValue] = useState("");
+
+  const [trainingSamples, setTrainingSamples] = useState([]);
+  const [testInput, setTestInput] = useState("");
+  const [trainStatus, setTrainingStatus] = useState("");
+  //const [trainOutput, setTrainOutput] = useState(null);
+  const [consoleOutput, setConsoleOutput] = useState([]);
+  const [testOutput, setTestOutput] = useState("");
+
+
 
   const nodeTypes = React.useMemo(() => ({
     linear: (props) => <LinearNode {...props} setNodes={setNodes} />,
@@ -48,8 +60,31 @@ export default function App() {
     avgpool: (props) => <AvgPool {...props} setNodes={setNodes} />,
     maxpool: (props) => <MaxPool {...props} setNodes={setNodes} />,
     adaptiveavgpool: (props) => <AdaptiveAvgPool {...props} setNodes={setNodes} />,
+    layer: LayerNode,
   }), [setNodes]);
 
+  const onAddNode = (type) => {
+    const newNode = {
+      id: `${Date.now()}`,
+      type: "layer",
+      position: { x: 200, y: 200 },
+      data: { 
+        type,
+        params: {},
+        updateNodeData: (id, patch) => {
+          setNodes(prev =>
+            prev.map(n =>
+              n.id === id
+                ? { ...n, data: { ...n.data, ...patch } }
+                : n
+            )
+          );
+        }
+      },
+    };
+
+    setNodes((prev) => [...prev, newNode]);
+  };
   const handleAddLinear = () => {
     const newNode = {
       id: crypto.randomUUID(),
@@ -124,120 +159,6 @@ export default function App() {
     setNodes((nds) => [...nds, newNode]);
   }
 
-  const handleAddConv = (convType) => {
-    const dim=convType === "conv1d" ? "1d" : convType === "conv2d" ? "2d" : "3d";
-    const newNode = {
-      id: crypto.randomUUID(),
-      type: "conv",
-      position: {x: 200, y: 200},
-      data: {
-        label: "Conv",
-        type: "conv",
-        dim,
-        inChannels: 1,
-        outChannels: 32,
-        kernelSize: 3,
-        stride: 1,
-        padding: 0,
-
-        kernelH: 3,
-        kernelW: 3,
-        strideH: 1,
-        strideW: 1,
-        padH: 0,
-        padW: 0,
-        kernelD: 3,
-        strideD: 1,
-        padD: 0, 
-        },
-      width: NODE_WIDTH,
-      height: NODE_HEIGHT,
-    };
-    setNodes((nds) => [...nds, newNode]);
-  };
-
-  const handleAddConvTranspose = (convtransposeType) => {
-     const newNode = {
-      id: crypto.randomUUID(),
-      type: "convtranspose",
-      position: { x: 200, y: 200 },
-      data: {
-        label: "ConvTranspose",
-        type: "convtranspose",
-        mode: convtransposeType === "convtranspose1d" ? "1d" : "2d",
-        kernelH: 3, kernelW: 3,
-        strideH: 1, strideW: 1,
-        padH: 0, padW: 0,
-        outPadH: 0, outPadW: 0,
-        inH: 28, inW: 28
-      },
-      width: NODE_WIDTH,
-      height: NODE_HEIGHT,
-    };
-    setNodes((nds) => [...nds, newNode]);
-  }
-
-  const handleAddAvgPool = (dimType) =>{
-    const newNode = {
-      id: crypto.randomUUID(),
-      type: "avgpool",
-      position: {x: 200, y: 200},
-      data: {
-        label: "AvgPool",
-        type: "avgpool",
-        dim: dimType,
-        kernel: 2,
-        stride: 2,
-        padding: 0
-      },
-      width: NODE_WIDTH,
-      height: NODE_HEIGHT,
-    }
-    setNodes((nds) => [...nds, newNode]);
-  }
-
-  const handleAddMaxPool = (maxpoolType) =>{
-    let dim = "1d";
-    if (maxpoolType === "maxpool2d") dim = "2d";
-    if (maxpoolType === "maxpool3d") dim = "3d";
-    const newNode = {
-      id: crypto.randomUUID(),
-      type: "maxpool",
-      position: {x: 200, y: 200},
-      data: {
-        label: "MaxPool",
-        type: "maxpool",
-        dim: dim,
-        kernel: 2,
-        stride: 1,
-        kernelH: 2,
-        kernelW: 2,
-        strideH: 1,
-        strideW: 1,
-        kernelD: 2,
-        strideD: 1,
-      },
-      width: NODE_WIDTH,
-      height: NODE_HEIGHT,
-    }
-    setNodes((nds) => [...nds, newNode]);
-  }
-
-  const handleAddAdaptiveAvgPool = (type) =>{
-    const newNode = {
-      id: crypto.randomUUID(),
-      type: "adaptiveavgpool",
-      position: {x: 200, y: 200},
-      data:{
-        label: "AdaptiveAvgPool",
-        dim: type === "adaptiveavgpool1d" ? "1d" : "2d",
-      },
-      width: NODE_WIDTH,
-      height: NODE_HEIGHT,
-    };
-    setNodes((nds) => [...nds, newNode]);
-  }
-
   const getOutputDim = (node) => {
     if (!node || !node.data) return null;
 
@@ -248,11 +169,19 @@ export default function App() {
 
     return null;  
   };
+
   const canConnect = (sourceNode, targetNode) => {
     if (!sourceNode || !targetNode) return false;
 
     const s = sourceNode.data ?? {};
     const t = targetNode.data ?? {};
+
+    const sdim=getOutputDim(s)
+    const tdim=getOutputDim(t)
+
+    if(targetNode.type === "embedding") return false;
+
+    if(tdim!=sdim) return false;
 
     if (targetNode.type === "conv" && t.dim === "1d" && sourceNode.type === "linear") {
       return (t.inChannels ?? null) === (s.outFeatures ?? null);
@@ -312,109 +241,273 @@ export default function App() {
     [setNodes, setEdges]
   );
 
+  const appendToConsole = (msg) => {
+    setConsoleOutput(prev => Array.isArray(prev) ? [...prev, msg] : [msg]);
+  }
 
-  const handleRunModel = async () => {
-    const payload = {
+  const handleDatasetSubmit = ({inputs, outputs}) =>{
+    const samples = inputs.map((inp, i) =>({
+      input: {data: inp},
+      output: {data: outputs[i]},
+    }));
+
+    //setTrainingSamples(prev => [...prev, ...samples]);
+    setTrainingSamples(samples);
+    setTrainingStatus("Dataset loaded successfully!")
+  };
+  
+  // Train
+  const handleTrain = async () =>{
+    if (!trainingSamples || trainingSamples.length === 0) {
+      setTrainingStatus("No training samples loaded!");
+      return;
+    }
+    //setTrainOutput(null);
+    setConsoleOutput([]);
+    
+    setTrainingStatus("Training...");
+    
+    const payload ={
+      nodes: nodes.map(n =>({
+        id: n.id,
+        type: n.data.type ?? n.type,
+        ...n.data
+      })),
       epochs,
-      nodes: nodes.map((n) => {
-        const d = n.data ?? {}; 
-
-        return {
-          id: n.id,
-          type: d.type ?? n.type,
-
-          // Linear
-          inFeatures: d.inFeatures ?? null,
-          outFeatures: d.outFeatures ?? null,
-
-          // Dropout
-          p: d.p ?? null,
-
-          // LayerNorm
-          normalizedShape: d.normalizedShape ?? null,
-
-          // Embedding
-          numEmbeddings: d.numEmbeddings ?? null,
-          embeddingDim: d.embeddingDim ?? null,
-          seqLen: d.seqLen ?? 1,
-
-          // Conv
-          dim: d.dim ?? null,
-          inChannels: d.inChannels ?? null,
-          outChannels: d.outChannels ?? null,
-          kernelSize: d.kernelSize ?? null,
-          stride: d.stride ?? null,
-          padding: d.padding ?? null,
-
-          kernelH: d.kernelH ?? null,
-          kernelW: d.kernelW ?? null,
-          strideH: d.strideH ?? null,
-          strideW: d.strideW ?? null,
-          padH: d.padH ?? null,
-          padW: d.padW ?? null,
-
-          kernelD: d.kernelD ?? null,
-          strideD: d.strideD ?? null,
-          padD: d.padD ?? null,
-
-          // Pool
-          kernel: d.kernel ?? null,
-          poolKernelH: d.kernelH ?? null,
-          poolKernelW: d.kernelW ?? null,
-          poolStrideH: d.strideH ?? null,
-          poolStrideW: d.strideW ?? null,
-        };
-      }),
-      edges: edges.map((e) => ({ source: e.source, target: e.target })),
+      learningRate,
+      edges: edges.map(e => ({ source: e.source, target: e.target })),
+      training: trainingSamples,
     };
-
-    console.log("Run payload:", payload);
-
-    try {
-      const res=await fetch("http://localhost:8000/run_model", {
+    
+    try{
+      const res = await fetch("http://localhost:8000/train", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {"Content-Type": "application/json"},
         body: JSON.stringify(payload),
-        mode: "cors"
       });
+      
+      if(!res.ok){
+        const txt = await res.text();
+        console.log("SERVER ERROR:", txt);
+        setTrainingStatus("Training failed!");
+        return;
+      }
+      
+      const data= await res.json();
+      
+      setConsoleOutput(data);
+      
+      console.log("TRAIN OUTPUT:", consoleOutput);
+      console.log("OUTPUT LENGTH:", consoleOutput?.output?.length);
 
-      const text = await res.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        console.error("Response is not JSON:", text);
-        throw new Error("Invalid JSON");
+      appendToConsole("TRAINING OUTPUT");
+      setTrainingStatus(data.message || "Training completed!");
+      if(data.output){
+        appendToConsole(
+          //"Model output:\n" + data.output.map((o, i) => `Sample ${i+1}: ${o[0]}`).join("\n")
+          "Model output:\n" + data.output.map((o, i) => `Sample ${i}: ${o.join(", ")}`).join("\n")
+        );
       }
 
-      const outputValue = {
-        output: data.output ?? data.outputs ?? null,
-        loss: data.loss ?? null,
-        loss_history: data.loss_history ?? null,
-        error: data.error ?? null,
-      };
-      setOutput(outputValue);
-    } catch (err) {
-      console.error("Run error:", err);
-      setOutput({ error: String(err) });
+    if(data.loss!==undefined){
+      appendToConsole(`Loss: ${data.loss}`);
     }
-  };
+
+    if(Array.isArray(data.loss_history)){
+      appendToConsole("Loss history: ");
+      data.loss_history.forEach((v, i) =>
+        appendToConsole(`Epoch ${i+1}: ${v}`)
+      )
+    }
+    } catch (err) {
+      console.error(err);
+      setTrainingStatus("Training failed! (network error)");
+    }
+  }
+
+  // Single test
+  const handleRun = async () =>{
+    try{
+      const parsedTest=parseSample(testInput);
+
+      if(!parsedTest || !parsedTest.data){
+        throw new Error("Parsed test input is invalid.");
+      }
+
+      const res = await fetch("http://localhost:8000/run", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ input: parsedTest}),
+      })
+
+      const data=await res.json();
+      setTestOutput(JSON.stringify(data.output));
+      appendToConsole("TEST OUTPUT");
+      //appendToConsole("Input: " + JSON.stringify(parsedTest.data));
+      appendToConsole(`Input: ${parsedTest.data}`);
+      //appendToConsole("Output: " + JSON.stringify(data.output));
+      appendToConsole(`Output: ${data.output}`);
+
+      setTestOutput(JSON.stringify(data.output));
+      
+    }catch(err) {
+      setTestOutput("Error: "+err.message);    
+    }
+  }
 
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       {/* Lenta */}
-      <div style={{padding: 10, background: "black", color: "white", display: "flex", gap: 10}}>
+      <div 
+        style={{
+          padding: "10px",
+          background: "black", 
+          color: "white", 
+          display: "flex", 
+          gap: 10,
+          borderRadius: "8px",
+          border: "0px solid black",
+          minWidth: "180px",
+          minHeigth: "20px",
+          //textAlign: "center",
+        }}>
         <button onClick={handleAddLinear}>➕ Add Linear</button>
         <button onClick={handleAddReLU}>➕ Add ReLU</button>
         <button onClick={handleAddDropout}>➕ Add Dropout </button>
         <button onClick={handleAddLayerNorm}>➕ Add LayerNorm</button>
         <button onClick={handleAddEmbedding}>➕  Add Embedding</button>
-        <AddConvButton onAddNode={handleAddConv}/>
-        <AddConvTransposeButton onAddNode={handleAddConvTranspose}/>
-        <AddAvgPoolButton onAddNode={handleAddAvgPool}/>
-        <AddMaxPoolButton onAddNode={handleAddMaxPool}/>
-        <AddAdaptivePoolButton onAddNode={handleAddAdaptiveAvgPool}/>
-        <button onClick={handleRunModel}>🚀 Run model</button>
+      
+        {/*<AddConvButton onAddNode={handleAddConv}/>*/}
+        <AddLayerButton
+          label="Add Convolution Layer"
+          options={[
+            {label: "Conv1D", value: "conv1d"},
+            {label: "Conv2D", value: "conv2d"},
+            {label: "Conv3D", value: "conv3d"},
+          ]}
+          onAddNode={(value) => onAddNode(value)}/>
+        {/*<AddConvTransposeButton onAddNode={handleAddConvTranspose}/>*/}
+        <AddLayerButton
+          label="Add ConvTranspose Layer"
+          options={[
+            {label: "ConvTranspose1D", value: "convtranspose1d"},
+            {label: "ConvTranspose2D", value: "convtranspose2d"},
+          ]}
+          onAddNode={(value) => onAddNode(value)}/>
+        <AddLayerButton
+          label="Add AvgPooling Layer"
+          options={[
+            {label: "AvgPool1D", value: "avgpool1d"},
+            {label: "AvgPool2D", value: "avgpool2d"},
+            {label: "AvgPool3D", value: "avdpool3d"},
+          ]}
+          onAddNode={(value) => onAddNode(value)}/>
+        {/*<AddAvgPoolButton onAddNode={handleAddAvgPool}/>
+        <AddMaxPoolButton onAddNode={handleAddMaxPool}/>*/}
+        <AddLayerButton
+          label="Add MaxPooling Layer"
+          options={[
+            {label: "MaxPool1D", value: "maxpool1d"},
+            {label: "MaxPool2D", value: "maxpool2d"},
+            {label: "MaxPool3D", value: "maxpool3d"},
+          ]}
+          onAddNode={(value) => onAddNode(value)}/>
+        {/*<AddAdaptivePoolButton onAddNode={handleAddAdaptiveAvgPool}/>*/}
+        <AddLayerButton
+          label="Add AdaptiveAvgPooling Layer"
+          options={[
+            {label: "AdaptiveAvgPool1D", value: "adaptiveavgpool1d"},
+            {label: "AdaptiveAvgPool2D", value: "adaptiveavgpool2d"},
+          ]}
+          onAddNode={(value) => onAddNode(value)}/>
+
+        {/* Test panel 
+        <div 
+          style={{
+            position: "absolute",
+            top: 100,
+            left: 10,
+            width: 300,
+            padding: 16,
+            background: "#72ce4eff",
+            //background: "#ce4e4eff",
+            color: "white",
+            border: "1px solid #333",
+            borderRadius: 8,
+            zIndex: 2000
+          }}>
+            <h3 style={{marginTop: 0}}> Test </h3>
+
+            <label>Input: </label>
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              style={{
+                width: "80%",
+                marginBottom: 10,
+                padding: 8,
+                borderRadius: 6,
+                border: "1px solid #555",
+                background: "#ffffffff",
+                color: "black",
+              }}
+            />
+
+            <label>Output:</label>
+            <input
+              type="text"
+              //readOnly
+              value={expectedValue}
+              onChange={(e) => setExpectedValue(e.target.value)}
+              style={{
+                width: "80%",
+                marginBottom: 12,
+                padding: 8,
+                borderRadius: 6,
+                border: "1px solid #555",
+                background: "#ffffffff",
+                color: "black",
+              }}
+            />
+
+        </div> */}
+
+        {/* Training and Testing*/}
+        <div style={{
+            position: "absolute",
+            top: 90,
+            left: 10,
+            width: 300,
+            padding: 16,
+            background: "#72ce4eff",
+            //background: "#ce4e4eff",
+            color: "white",
+            border: "1px solid #333",
+            borderRadius: 8,
+            zIndex: 2000,
+            minHeight: "200px",
+          }}>
+
+          <h3> Training </h3>
+          <TrainingDataInput onDataReady={handleDatasetSubmit} />
+          <button onClick={handleTrain}> Train </button>
+          <p>{trainStatus}</p>
+
+          <h3> Testing </h3>
+          <textarea
+            value={testInput}
+            onChange={(e) => setTestInput(e.target.value)}
+            style={{width: "300px", height: "80px"}}
+            rows={3}
+            placeholder="Enter test input"
+          />
+          <button onClick={handleRun}>Run</button>
+          {/*<h3>Output:</h3>
+          <pre>{testOutput}</pre>*/}
+        </div>
+
+        {/*<button onClick={handleRunModel}>🚀 Run Model </button>*/}
         <label style={{ display: "flex", alignItems: "center", gap: 5, color: "white"}}>
           Epochs: 
           <input
@@ -427,7 +520,18 @@ export default function App() {
             />
         </label>
 
-        {output && (
+        <label style={{ display: "flex", alignItems: "center", gap: 5, color: "white"}}>
+          Learning rate: 
+          <input
+            type="number"
+            max={100}
+            value={learningRate}
+            onChange={(e) => setLearningRate(Number(e.target.value))}
+            style={{width: 70}}
+            />
+        </label>
+
+        {consoleOutput.length>0 && (
           <div
             style={{
               position: "absolute",
@@ -444,50 +548,72 @@ export default function App() {
               boxShadow: "0 0 10px rgba(0,0,0,0.3)"
             }}
           >
-            {/*<strong>Model output:</strong>
-            <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>
-              {JSON.stringify(output, null, 2)}
-            </pre>*/}
+            <div>
+              {Array.isArray(consoleOutput.output) && (
+                <>
+                  <strong>Model output:</strong>
+                  <div style={{ whiteSpace: "pre-line" }}>
+                    {consoleOutput.output.map((row, i) =>
+                        <div key={i}>
+                          <strong>Sample {i}:</strong>
+                          <pre>{Array.isArray(row) ? row[0] : row}</pre>
+                        </div>
 
-            {Array.isArray(output?.output) && (
-              <>
-                <strong>Model output:</strong>
-                <div style={{ whiteSpace: "pre-line" }}>
-                  {output.output.map((row, i) =>
-                    Array.isArray(row) ? row.join("\n") : row
-                  )}
-                </div>
-              </>
-            )}
+                    )}
+                  </div>
+                </>
+              )}
 
+              {"loss" in consoleOutput && (
+                <>
+                  <strong>Loss:</strong>
+                  <div>{consoleOutput.loss}</div>
+                </>
+              )}
 
-            {"loss" in output && (
-              <>
-                <strong>Loss:</strong>
-                <div>{output.loss}</div>
-              </>
-            )}
-
-            {Array.isArray(output.loss_history) && (
+              {Array.isArray(consoleOutput?.loss_history) && (
               <>
                 <hr style={{ borderColor: "#333" }} />
                 <strong>Loss history:</strong>
-                <div style={{fontSize: 12, marginTop: 6}}>
-                  {output.loss_history.map((val, idx) =>
+                <div style={{ fontSize: 12, marginTop: 6 }}>
+                  {consoleOutput.loss_history.map((val, idx) => (
                     <div key={idx}>
-                      epoch: {idx+1} : {val};
+                      epoch: {idx + 1} : {val};
                     </div>
-                  )}
+                  ))}
                 </div>
-                {/*<pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>
-                  {JSON.stringify(output.loss_history, null, 2)}
-                </pre>*/}
-              </>
-            )}
+              </>)}
+            </div>
           </div>
         )}
       </div>
 
+      {consoleOutput.length>0 && (
+        <div style={{
+          position: "absolute",
+          top: 100,
+          right: 20,
+          width: 350,
+          maxHeight: 500,
+          overflowY: "auto",
+          background: "black",
+          color: "white",
+          padding: 10,
+          border: "1px solid #333",
+          borderRadius: 5,
+          zIndex: 1000
+        }}>
+          {consoleOutput.map((c,i) => (
+            <div key={i} style={{whiteSpace: "pre-wrap", marginBottom: 10}}>
+              {c}
+            </div>
+          ))}
+        </div>
+
+      )}
+
+
+      
       {/* Trash */}
       <div ref={trashRef}
         style={{
@@ -496,7 +622,7 @@ export default function App() {
           top: trashY,
           width: trashWidth,
           height: trashHeight,
-          background: "rgba(255,0,0,0.2)",
+          background: "rgba(232, 35, 35, 0.2)",
           border: "2px dashed red",
           zIndex: 10,
           display: "flex",
@@ -522,5 +648,6 @@ export default function App() {
         <Controls />
       </ReactFlow>
     </div>
-  );
+  )
 }
+

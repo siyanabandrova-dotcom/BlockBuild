@@ -52,7 +52,7 @@ function MaxPool({id, data, setNodes}){
             <Handle type="target" position={Position.Top} id="in"></Handle>
             <Handle type="source" position={Position.Bottom} id="out"></Handle>
 
-            <h4 stъле={{margin: 0}}>MaxPool ({dim})</h4>
+            <h4 style={{margin: 0}}>MaxPool ({dim})</h4>
             <select value={dim} onChange={(e) => handleDimChange(e.target.value)}>
                 <option value="1d">1D</option>
                 <option value="2d">2D</option>
