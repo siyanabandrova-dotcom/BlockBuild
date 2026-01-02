@@ -3,13 +3,14 @@ import { Handle, Position } from "reactflow";
 import Dropout from "./Dropout";
 function Embedding({ data, id, setNodes}){
     const handleChange = (e) =>{
+        const field = e.target.name;
         const value = parseInt(e.target.value, 10);
         if(isNaN(value) || value<=0) return;
 
         setNodes((nds) => 
             nds.map((node) =>{
                 if(node.id===id){
-                    return {...node, data: {...node.data, embeddingDim: value}};
+                    return {...node, data: {...node.data, [field]: value}};
                 }
                 return node;
             })
@@ -36,7 +37,18 @@ function Embedding({ data, id, setNodes}){
                 <label> Embedding Dim: </label>
                 <input
                     type="number"
-                    value={data.Embedding}
+                    name="embeddingDim"
+                    value={data.embeddingDim}
+                    onChange={handleChange}
+                    style={{width: 50}}
+                />
+            </div>
+            <div>
+                <label> Num embeddings: </label>
+                <input
+                    type="number"
+                    name="numEmbeddings"
+                    value={data.numEmbeddings}
                     onChange={handleChange}
                     style={{width: 50}}
                 />

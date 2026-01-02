@@ -377,7 +377,6 @@ export default function App() {
         <button onClick={handleAddLayerNorm}>➕ Add LayerNorm</button>
         <button onClick={handleAddEmbedding}>➕  Add Embedding</button>
       
-        {/*<AddConvButton onAddNode={handleAddConv}/>*/}
         <AddLayerButton
           label="Add Convolution Layer"
           options={[
@@ -386,7 +385,6 @@ export default function App() {
             {label: "Conv3D", value: "conv3d"},
           ]}
           onAddNode={(value) => onAddNode(value)}/>
-        {/*<AddConvTransposeButton onAddNode={handleAddConvTranspose}/>*/}
         <AddLayerButton
           label="Add ConvTranspose Layer"
           options={[
@@ -402,8 +400,6 @@ export default function App() {
             {label: "AvgPool3D", value: "avdpool3d"},
           ]}
           onAddNode={(value) => onAddNode(value)}/>
-        {/*<AddAvgPoolButton onAddNode={handleAddAvgPool}/>
-        <AddMaxPoolButton onAddNode={handleAddMaxPool}/>*/}
         <AddLayerButton
           label="Add MaxPooling Layer"
           options={[
@@ -412,7 +408,6 @@ export default function App() {
             {label: "MaxPool3D", value: "maxpool3d"},
           ]}
           onAddNode={(value) => onAddNode(value)}/>
-        {/*<AddAdaptivePoolButton onAddNode={handleAddAdaptiveAvgPool}/>*/}
         <AddLayerButton
           label="Add AdaptiveAvgPooling Layer"
           options={[
@@ -420,58 +415,6 @@ export default function App() {
             {label: "AdaptiveAvgPool2D", value: "adaptiveavgpool2d"},
           ]}
           onAddNode={(value) => onAddNode(value)}/>
-
-        {/* Test panel 
-        <div 
-          style={{
-            position: "absolute",
-            top: 100,
-            left: 10,
-            width: 300,
-            padding: 16,
-            background: "#72ce4eff",
-            //background: "#ce4e4eff",
-            color: "white",
-            border: "1px solid #333",
-            borderRadius: 8,
-            zIndex: 2000
-          }}>
-            <h3 style={{marginTop: 0}}> Test </h3>
-
-            <label>Input: </label>
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              style={{
-                width: "80%",
-                marginBottom: 10,
-                padding: 8,
-                borderRadius: 6,
-                border: "1px solid #555",
-                background: "#ffffffff",
-                color: "black",
-              }}
-            />
-
-            <label>Output:</label>
-            <input
-              type="text"
-              //readOnly
-              value={expectedValue}
-              onChange={(e) => setExpectedValue(e.target.value)}
-              style={{
-                width: "80%",
-                marginBottom: 12,
-                padding: 8,
-                borderRadius: 6,
-                border: "1px solid #555",
-                background: "#ffffffff",
-                color: "black",
-              }}
-            />
-
-        </div> */}
 
         {/* Training and Testing*/}
         <div style={{
