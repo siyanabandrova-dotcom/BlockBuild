@@ -1,70 +1,108 @@
-# Getting Started with Create React App
+BlockBuild – Installation & Run Guide
+BlockBuild is a visual, block-based editor for designing neural network architectures.
+The project consists of two main components:- Frontend – React application (visual neural network editor)- Backend – FastAPI + PyTorch (model execution and training)
+**REQUIRED SOFTWARE**
+1. Git (recommended)
+https://git-scm.com/downloads
+Install the first option: **Git for Windows (x64 Setup)**.
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+For choosing the default editor used by Git: Use Visual Studio Code or Notepad as Git’s default editor.
 
-## Available Scripts
+For Adjusting the name of the initial branch in new repositories: Select Override the default branch name fir new repositories.
 
-In the project directory, you can run:
+Another setting are as default.
 
-### `npm start`
+Check:
+```bash
+git --version
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+3. Python 3.10 or 3.11
+Install from:
+https://www.python.org/downloads/
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Enable "Add Python to PATH"
 
-### `npm test`
+Update setting now? - Yes
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Add comands directory to your PATH now? - Yes
 
-### `npm run build`
+Install CPython now? - Yes
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Check:
+```bash
+python --version
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+5. Node.js (v18 or v20 recommended)
+https://nodejs.org/
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Install: Windows Installer (.msi)
 
-### `npm run eject`
+In Tools for Native Modules: Do not mark Automatically install the necessary tools
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Check:
+```bash
+node --version
+npm --version
+```
+For check enter: PowerShell as Administrator
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Write this command: Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+**PROJECT SETUP**
+Clone repository:
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+git clone https://github.com/siyanabandrova-dotcom/BlockBuild.git
 
-## Learn More
+```bash
+cd BlockBuild
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Check:
+git status
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+**BACKEND SETUP**
+Create virtual environment:
 
-### Code Splitting
+In BlockBuild folder: 
+```bash
+python -m venv venv
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+Activate:
+Windows:
+```bash
+venv\Scripts\Activate
+```
+Have to see: (venv) PS: ...
+Linux/macOS:
+```bash
+source venv/bin/activate
+```
+Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+Run backend:
+```bash
+python -m uvicorn server:app --reload --port 8000
+```
+Backend URL:
+http://localhost:8000
+Docs:
+http://localhost:8000/docs
 
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+In other terminal
+**FRONTEND SETUP**
+Install dependencies:
+```bash
+cd BlockBuild
+npm install
+Run frontend:
+npm start
+```
+Frontend URL:
+http://localhost:3000
+IMPORTANT:
+Backend must be started before frontend
