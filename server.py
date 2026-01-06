@@ -134,6 +134,35 @@ def ensure_conv_input(z: torch.Tensor, dim: str) -> torch.Tensor:
 
     raise ValueError(f"Unknown dim: {dim}")
 
+def adapt_input_to_layer(z, layer, layer_type):
+    # Linear (batch, features)
+    if isinstance(layer, nn.Linear):
+        z = z.float()
+        if z.dim()>2:
+            z = z.view(z.size(0), -1)
+        
+        return z
+
+    if any(isinstance(layer, t) for t in [nn.Conv1d, nn.ConvTranspose1d, nn.MaxPool1d, nn.AvgPool1d, nn.AdaptiveAvgPool1d]):
+        if z.dim() == 2:
+            z = z.unsqueeze(1)
+
+        if z.dim() == 3:
+            return z
+
+        z = z.view(z.size(0), 1, -1)
+        return z
+    
+    if isinstance(layer, nn.Embedding):
+        if z.dim() == 2 and z.size(1) > 1:
+            z = torch.argmax(z, dim=1).view(-1, 1)
+        
+        if z.dim() == 1:
+            z = z.view(-1, 1)
+
+        return z.long()
+
+    return z
 
 sorted_nodes=[]
 layers={}
@@ -157,6 +186,9 @@ def train(graph: GraphRequest):
     except Exception as e:
         return {"error": f"Topological sort failed: {e}"}
     
+    print("SORTED:", sorted_nodes)
+    print("LAYERS:", layers.keys())
+    
     layers={}
     for node in sorted_nodes:
         t=node.type.lower()
@@ -174,45 +206,21 @@ def train(graph: GraphRequest):
             norm_shape = node.normalizedShape or node.inFeatures
             layers[node.id] = nn.LayerNorm(norm_shape)
 
-        elif t == "conv":
-            if node.dim == "1d":
-                layers[node.id] = nn.Conv1d(
-                    node.inChannels, node.outChannels,
-                    kernel_size=node.kernelSize or 3,
-                    stride=node.stride or 1,
-                    padding=node.padding or 0
-                )
-            elif node.dim == "2d":
-                layers[node.id] = nn.Conv2d(
-                    node.inChannels, node.outChannels,
-                    kernel_size=(node.kernelH or 3, node.kernelW or 3),
-                    stride=(node.strideH or 1, node.strideW or 1),
-                    padding=(node.padH or 0, node.padW or 0)
-                )
-            elif node.dim == "3d":
-                layers[node.id] = nn.Conv3d(
-                    node.inChannels, node.outChannels,
-                    kernel_size=(node.kernelD or 3, node.kernelH or 3, node.kernelW or 3),
-                    stride=(node.strideD or 1, node.strideH or 1, node.strideW or 1),
-                    padding=(node.padD or 0, node.padH or 0, node.padW or 0)
-                )
-
-        elif t == "convtranspose":
-            if node.dim == "1d":
+        elif t == "convtranspose1d": # t == "convtranspose"
                 layers[node.id] = nn.ConvTranspose1d(
                     node.inChannels, node.outChannels,
                     kernel_size=node.kernelSize or 3,
                     stride=node.stride or 1,
                     padding=node.padding or 0
                 )
-            elif node.dim == "2d":
+        elif t == "convtranspose2d":
                 layers[node.id] = nn.ConvTranspose2d(
                     node.inChannels, node.outChannels,
                     kernel_size=(node.kernelH or 3, node.kernelW or 3),
                     stride=(node.strideH or 1, node.strideW or 1),
                     padding=(node.padH or 0, node.padW or 0)
                 )
-            elif node.dim == "3d":
+        elif t == "convtranspose3d":
                 layers[node.id] = nn.ConvTranspose3d(
                     node.inChannels, node.outChannels,
                     kernel_size=(node.kernelD or 3, node.kernelH or 3, node.kernelW or 3),
@@ -220,17 +228,37 @@ def train(graph: GraphRequest):
                     padding=(node.padD or 0, node.padH or 0, node.padW or 0)
                 )
 
-        elif t == "maxpool":
-            if node.dim == "1d":
-                layers[node.id] = nn.MaxPool1d(node.kernel or 2)
+        elif t == "conv1d":
+                print(node.inChannels, node.outChannels)
+                layers[node.id] = nn.Conv1d(
+                    node.inChannels, node.outChannels,
+                    kernel_size=node.kernelSize or 3,
+                    stride=node.stride or 1,
+                    padding=node.padding or 0
+                )
+        elif t == "conv2d":
+                layers[node.id] = nn.Conv2d(
+                    node.inChannels, node.outChannels,
+                    kernel_size=(node.kernelH or 3, node.kernelW or 3),
+                    stride=(node.strideH or 1, node.strideW or 1),
+                    padding=(node.padH or 0, node.padW or 0)
+                )
+        elif t == "conv3d":
+                layers[node.id] = nn.Conv3d(
+                    node.inChannels, node.outChannels,
+                    kernel_size=(node.kernelD or 3, node.kernelH or 3, node.kernelW or 3),
+                    stride=(node.strideD or 1, node.strideH or 1, node.strideW or 1),
+                    padding=(node.padD or 0, node.padH or 0, node.padW or 0)
+                )
 
-        elif t == "avgpool":
-            if node.dim == "1d":
-                layers[node.id] = nn.AvgPool1d(node.kernel or 2)
+        elif t == "maxpool1d":
+            layers[node.id] = nn.MaxPool1d(node.kernel or 2, node.stride or 1)
 
-        elif t == "adaptiveavgpool":
-            if node.dim == "1d":
-                layers[node.id] = nn.AdaptiveAvgPool1d(node.outputSize)
+        elif t == "avgpool1d":
+            layers[node.id] = nn.AvgPool1d(node.kernel or 2, node.stride or 1)
+
+        elif t =="adaptiveavgpool":
+                layers[node.id] = nn.AdaptiveAvgPool1d(node.outputSize or 1) 
 
         elif t == "embedding":
             layers[node.id] = nn.Embedding(
@@ -238,21 +266,37 @@ def train(graph: GraphRequest):
                 node.embeddingDim or 16
             )
 
+    for node in sorted_nodes:
+        print("Node: ",node.id, node.type)
+
+    print("Sorted nodes IDs:", [n.id for n in sorted_nodes])
+    print("Layer keys:", list(layers.keys()))
+
     def forward_once(z):
 
         for node in sorted_nodes:
             layer = layers[node.id]
+            print("Node ",node.id, node.type)
             t=node.type.lower()
+            z = adapt_input_to_layer(z, layer, node.type.lower())
 
             if t in ["linear", "relu", "dropout", "layernorm"]:
                 z = layer(z)
 
-            elif t in ["conv", "convtranspose", "maxpool", "avgpool", "adaptiveavgpool"]:
+            elif t in ["conv1d", "conv2d", "conv3d","convtranspose1d", "convtranspose2d", "convtranspose3d","maxpool1d", "maxpool2d", "maxpool3d", "avgpool1d", "avgpool2d", "avgpool3d","adaptiveavgpool1d", "adaptiveavgpool2d"]:
                 if z.dim() == 2:
                     z = z.unsqueeze(1)
                 
                 z=layer(z)
-        
+            elif node.type.lower() == "embedding":
+                z = z.long()
+                z = layer(z)
+                z = z.mean(dim=1)
+            else:
+                print("⚠️ Unknown node type, using Identity:", node.id, node.type)
+                layers[node.id] = nn.Identity()
+            
+                    
         return z
     
     params = []

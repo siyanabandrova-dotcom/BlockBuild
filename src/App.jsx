@@ -47,8 +47,6 @@ export default function App() {
   const [consoleOutput, setConsoleOutput] = useState([]);
   const [testOutput, setTestOutput] = useState("");
 
-
-
   const nodeTypes = React.useMemo(() => ({
     linear: (props) => <LinearNode {...props} setNodes={setNodes} />,
     relu: (props) => <ReLU {...props} />,
@@ -60,26 +58,51 @@ export default function App() {
     avgpool: (props) => <AvgPool {...props} setNodes={setNodes} />,
     maxpool: (props) => <MaxPool {...props} setNodes={setNodes} />,
     adaptiveavgpool: (props) => <AdaptiveAvgPool {...props} setNodes={setNodes} />,
-    layer: LayerNode,
+    layer: (props) => <LayerNode {...props} setNodes={setNodes} />,
   }), [setNodes]);
 
   const onAddNode = (type) => {
-    const newNode = {
+    let defaultData = {}
+    if (type === "convtranspose1d") {
+      defaultData = {
+        dim: "1d",
+        inChannels: 1,
+        outChannels: 1,
+        kernelSize: 3,
+        stride: 1,
+      };
+    }
+    if (type === "convtranspose2d") {
+      defaultData = {
+        dim: "2d",
+        inChannels: 1,
+        outChannels: 1,
+        kernelH: 3,
+        kernelW: 3,
+        strideH: 1,
+        strideW: 1,
+      };
+    }
+
+  const newNode = {
       id: `${Date.now()}`,
       type: "layer",
       position: { x: 200, y: 200 },
       data: { 
         type,
-        params: {},
+        ...defaultData,
         updateNodeData: (id, patch) => {
-          setNodes(prev =>
-            prev.map(n =>
-              n.id === id
-                ? { ...n, data: { ...n.data, ...patch } }
-                : n
-            )
-          );
-        }
+        setNodes(prev =>
+          prev.map(n => {
+            if (n.id === id) {
+              return { ...n, data: { ...n.data, ...patch } };
+            }
+            return n;
+          })
+        );
+      }
+
+        //params: {},
       },
     };
 
@@ -268,11 +291,22 @@ export default function App() {
     setTrainingStatus("Training...");
     
     const payload ={
-      nodes: nodes.map(n =>({
-        id: n.id,
-        type: n.data.type ?? n.type,
-        ...n.data
-      })),
+      
+      nodes: nodes.map(n => {
+          const safeType = n.data?.type
+              ? n.data.type
+              : (n.type === "layer" ? null : n.type);
+
+          if (!safeType) {
+              console.error("❗ Node missing data.type → FIX THIS NODE:", n);
+          }
+
+          return {
+              id: n.id,
+              type: safeType,
+              ...n.data
+          };
+      }),
       epochs,
       learningRate,
       edges: edges.map(e => ({ source: e.source, target: e.target })),
@@ -375,7 +409,7 @@ export default function App() {
         <button onClick={handleAddReLU}>➕ Add ReLU</button>
         <button onClick={handleAddDropout}>➕ Add Dropout </button>
         <button onClick={handleAddLayerNorm}>➕ Add LayerNorm</button>
-        <button onClick={handleAddEmbedding}>➕  Add Embedding</button>
+        <button onClick={handleAddEmbedding}>➕ Add Embedding</button>
       
         <AddLayerButton
           label="Add Convolution Layer"
@@ -443,14 +477,11 @@ export default function App() {
             onChange={(e) => setTestInput(e.target.value)}
             style={{width: "300px", height: "80px"}}
             rows={3}
-            placeholder="Enter test input"
+            placeholder="Enter test input (only one test)"
           />
           <button onClick={handleRun}>Run</button>
-          {/*<h3>Output:</h3>
-          <pre>{testOutput}</pre>*/}
         </div>
 
-        {/*<button onClick={handleRunModel}>🚀 Run Model </button>*/}
         <label style={{ display: "flex", alignItems: "center", gap: 5, color: "white"}}>
           Epochs: 
           <input

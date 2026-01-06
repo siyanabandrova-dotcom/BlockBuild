@@ -1,0 +1,25 @@
+Predict House Prices
+Epochs: 370
+Learning Rate: 0.00001 
+Number of Samples: 10
+60 2 30	5.0	
+75 3 20	3.5
+90 4 10 2.0
+120 5 5 1.5
+45 1 40 7.0
+150 6 2 1.0
+80 3 15	3.0
+110 4 12 2.5
+50 1 35	6.5
+100 4 8	2.0
+95
+140
+210
+310
+70
+380
+160
+250
+85
+230
+Model: Linear (In: 4, Out: 64) -> ReLU -> LayerNorm (Normalized Shape: 64) -> Linear (In: 64, Out: 128) -> ReLU -> Linear (In: 128, Out: 64) -> ReLU -> LayerNorm (Normalized Shape: 64) -> Linear (In: 64, Out: 1)

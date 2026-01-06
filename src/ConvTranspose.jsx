@@ -17,25 +17,18 @@ export default function ConvTransposeNode({ data, id, setNodes }){
             background: "white",
             width: 220
         }}>
-            <h4 style={{margin: 0, marginBottom: 8}}>ConvTranspose </h4>
-            <label>Mode: </label>
-            <select
-                value={data.mode}
-                onChange={(e) => update("mode", e.target.value)}>
-                <option value="1d"> 1D </option>
-                <option value="2d"> 2D </option>
-            </select>
+            <h4 style={{margin: 0, marginBottom: 8}}> ConvTranspose </h4>
             <label> In Channels: </label>
             <input
                 type="number"
-                value={data.inChannel}
-                onChange={(e) => update("inChannel", +e.target.value)}
+                value={data.inChannels}
+                onChange={(e) => update("inChannels", +e.target.value)}
             />
             <label> Out Channels: </label>
             <input
                 type="number"
-                value={data.outChannel}
-                onChange={(e) => update("outChannel", +e.target.value)}
+                value={data.outChannels}
+                onChange={(e) => update("outChannels", +e.target.value)}
             />
 
             {data.mode=="1d" && (
@@ -51,24 +44,6 @@ export default function ConvTransposeNode({ data, id, setNodes }){
                         type="number"
                         value={data.stride}
                         onChange={(e) => update("stride", +e.target.value)}
-                    />
-                    <label> Padding: </label>
-                    <input
-                        type="number"
-                        value={data.padding}
-                        onChange={(e) => update("padding", +e.target.value)}
-                    />
-                    <label> OutputPadding: </label>
-                    <input
-                        type="number"
-                        value={data.outputpadding}
-                        onChange={(e) => update("outputpadding", +e.target.value)}
-                    />
-                    <label> Length: </label>
-                    <input
-                        type="number"
-                        value={data.length}
-                        onChange={(e) => update("length", +e.target.value)}
                     />
                 </>
             )}
@@ -95,36 +70,6 @@ export default function ConvTransposeNode({ data, id, setNodes }){
                     type="number" 
                     value={data.strideW}
                     onChange={(e) => update("strideW", +e.target.value)} />
-
-                <label>Padding (H x W):</label>
-                <input 
-                    type="number" 
-                    value={data.padH}
-                    onChange={(e) => update("padH", +e.target.value)} />
-                <input 
-                    type="number" 
-                    value={data.padW}
-                    onChange={(e) => update("padW", +e.target.value)} />
-
-                <label>Output Padding (H x W):</label>
-                <input 
-                    type="number" 
-                    value={data.outPadH}
-                    onChange={(e) => update("outPadH", +e.target.value)} />
-                <input 
-                    type="number" 
-                    value={data.outPadW}
-                    onChange={(e) => update("outPadW", +e.target.value)} />
-
-                <label>Input (H x W):</label>
-                <input 
-                    type="number" 
-                    value={data.inH}
-                    onChange={(e) => update("inH", +e.target.value)} />
-                <input 
-                    type="number" 
-                    value={data.inW}
-                    onChange={(e) => update("inW", +e.target.value)} />
                 </>
             )}
         

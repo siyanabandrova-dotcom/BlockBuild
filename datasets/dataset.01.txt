@@ -1,0 +1,18 @@
+Epochs: 200
+Learning Rate: 0.01
+Input samples: 
+1 2
+1 4
+2 2
+6 1
+3 3
+2 3
+Output samples: 
+3
+5
+4
+7
+6
+5
+Model: 
+Embedding (Embedding Dim: 2, Num embeddings: 100) -> Linear (In: 2, Out: 1) -> ReLU
