@@ -80,6 +80,10 @@ Linux/macOS:
 ```bash
 source venv/bin/activate
 ```
+Install matplotlib inside venv
+```bash
+python -m pip install matplotlib
+```
 Install dependencies:
 ```bash
 pip install -r requirements.txt
