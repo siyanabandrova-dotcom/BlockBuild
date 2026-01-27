@@ -284,11 +284,46 @@ def train(graph: GraphRequest):
     print("Sorted nodes IDs:", [n.id for n in sorted_nodes])
     print("Layer keys:", list(layers.keys()))
 
-    def forward_once(z):
+    """
+    дef forward_once(z):
 
         if z.dim() == 3 and z.shape[1] == 1:
+            # [B, 1, FEATURES] → [B, FEATURES, 1]
+            z = z.transpose(1, 2)
+
+        for node in sorted_nodes:
+            layer = layers[node.id]
+            print("Node ",node.id, node.type)
+            t=node.type.lower()
+            z = adapt_input_to_layer(z, layer, node.type.lower())
+
+            if t in ["linear", "relu", "dropout", "layernorm"]:
+                z = layer(z)
+
+            elif t in ["conv1d", "conv2d", "conv3d","convtranspose1d", "convtranspose2d", "convtranspose3d","maxpool1d", "maxpool2d", "maxpool3d", "avgpool1d", "avgpool2d", "avgpool3d","adaptiveavgpool1d", "adaptiveavgpool2d"]:
+                if z.dim() == 2:
+                    z = z.unsqueeze(2)
+                
+                z=layer(z)
+            elif node.type.lower() == "embedding":
+                z = z.long()
+                z = layer(z)
+                z = z.mean(dim=1)
+            else:
+                print("⚠️ Unknown node type, using Identity:", node.id, node.type)
+                layers[node.id] = nn.Identity()
+            
+                    
+        return z
+    """
+    def forward_once(z):
+
+    # 🔥 ABSOLUTE INPUT NORMALIZATION
+        if z.dim() == 3 and z.shape[1] == 1:
+            # [B, 1, FEATURES] → [B, FEATURES, 1]
             z = z.transpose(1, 2)
         elif z.dim() == 2:
+            # [B, FEATURES] → [B, FEATURES, 1]
             z = z.unsqueeze(2)
 
         for node in sorted_nodes:
@@ -297,10 +332,12 @@ def train(graph: GraphRequest):
 
             print("Node", node.id, node.type, "input shape:", z.shape)
 
+            # 🔹 CONV / POOL BLOCKS → искат 3D
             if t in [
                 "conv1d", "convtranspose1d",
                 "maxpool1d", "avgpool1d", "adaptiveavgpool1d"
             ]:
+                # гаранция за [B, F, T]
                 if z.dim() == 2:
                     z = z.unsqueeze(2)
                 elif z.dim() == 3 and z.shape[1] == 1:
@@ -308,12 +345,15 @@ def train(graph: GraphRequest):
 
                 z = layer(z)
 
+            # 🔹 LINEAR / NORM / ACTIVATION → искат 2D
             elif t in ["linear", "layernorm", "relu", "dropout"]:
+                # flatten ако идва от Conv
                 if z.dim() == 3:
-                    z = z.squeeze(-1)
+                    z = z.squeeze(-1)   # [B, F, 1] → [B, F]
 
                 z = layer(z)
 
+            # 🔹 EMBEDDING
             elif t == "embedding":
                 z = z.long()
                 z = layer(z)
@@ -396,9 +436,12 @@ def run_single(data: dict):
 
     def forward_once(z):
 
+    # 🔥 ABSOLUTE INPUT NORMALIZATION
         if z.dim() == 3 and z.shape[1] == 1:
+            # [B, 1, FEATURES] → [B, FEATURES, 1]
             z = z.transpose(1, 2)
         elif z.dim() == 2:
+            # [B, FEATURES] → [B, FEATURES, 1]
             z = z.unsqueeze(2)
 
         for node in sorted_nodes:
@@ -407,10 +450,12 @@ def run_single(data: dict):
 
             print("Node", node.id, node.type, "input shape:", z.shape)
 
+            # 🔹 CONV / POOL BLOCKS → искат 3D
             if t in [
                 "conv1d", "convtranspose1d",
                 "maxpool1d", "avgpool1d", "adaptiveavgpool1d"
             ]:
+                # гаранция за [B, F, T]
                 if z.dim() == 2:
                     z = z.unsqueeze(2)
                 elif z.dim() == 3 and z.shape[1] == 1:
@@ -418,12 +463,15 @@ def run_single(data: dict):
 
                 z = layer(z)
 
+            # 🔹 LINEAR / NORM / ACTIVATION → искат 2D
             elif t in ["linear", "layernorm", "relu", "dropout"]:
+                # flatten ако идва от Conv
                 if z.dim() == 3:
-                    z = z.squeeze(-1)
+                    z = z.squeeze(-1)   # [B, F, 1] → [B, F]
 
                 z = layer(z)
 
+            # 🔹 EMBEDDING
             elif t == "embedding":
                 z = z.long()
                 z = layer(z)
@@ -434,6 +482,22 @@ def run_single(data: dict):
                 layers[node.id] = nn.Identity()
 
         return z
+    """
+    def forward_once(z):
+        for node in sorted_nodes:
+            layer = layers[node.id]
+            t = node.type.lower()
+
+            if t in ["linear", "relu", "dropout", "layernorm"]:
+                z = layer(z)
+
+            elif t in ["conv", "convtranspose", "maxpool", "avgpool", "adaptiveavgpool"]:
+                if z.dim() == 2:
+                    z = z.unsqueeze(1)
+                z = layer(z)
+
+        return z
+    """
     
 
     with torch.no_grad():

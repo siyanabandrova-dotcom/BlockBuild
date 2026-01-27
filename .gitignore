@@ -27,3 +27,11 @@ __pycache__/
 venv/
 *.pyc
 
+#Dataset + Loss
+datasets/
+*.png
+node_modules/
+__pycache__/
+.env
+
+

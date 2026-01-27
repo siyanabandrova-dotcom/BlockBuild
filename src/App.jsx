@@ -373,6 +373,7 @@ export default function App() {
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({ input: parsedTest}),
       })
+      //console.log("RAW RESPONSE:", data);
 
       const data=await res.json();
       setTestOutput(JSON.stringify(data.output));
