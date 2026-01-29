@@ -374,7 +374,7 @@ export default function App() {
       const res = await fetch(/*"http://localhost:8000/run"*/ `${API_URL}/run`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ input: parsedTest}),
+        body: JSON.stringify({ input: parsedTest.data}),
       })
       //console.log("RAW RESPONSE:", data);
 
