@@ -278,6 +278,9 @@ export default function App() {
     setTrainingSamples(samples);
     setTrainingStatus("Dataset loaded successfully!")
   };
+
+  const API_URL = "https://blockbuild-fvhs.onrender.com";
+
   
   // Train
   const handleTrain = async () =>{
@@ -314,7 +317,7 @@ export default function App() {
     };
     
     try{
-      const res = await fetch("http://localhost:8000/train", {
+      const res = await fetch(/*"http://localhost:8000/train"*/ `${API_URL}/train`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(payload),
@@ -368,7 +371,7 @@ export default function App() {
         throw new Error("Parsed test input is invalid.");
       }
 
-      const res = await fetch("http://localhost:8000/run", {
+      const res = await fetch(/*"http://localhost:8000/run"*/ `${API_URL}/run`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({ input: parsedTest}),
