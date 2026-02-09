@@ -90,7 +90,7 @@ export default function LayerNode({ id, data, setNodes }) {
                         <label>In Channels: </label>
                         <input
                             value={params.in || ""}
-                            onChange={(e) => handleChange("in", e.target.value)}
+                            onChange={(e) => handleChange("inChannels", e.target.value)}
                         />
                     </div>
 
@@ -98,7 +98,7 @@ export default function LayerNode({ id, data, setNodes }) {
                         <label>Out Channels: </label>
                         <input
                             value={params.out || ""}
-                            onChange={(e) => handleChange("out", e.target.value)}
+                            onChange={(e) => handleChange("outChannels", e.target.value)}
                         />
                     </div>
                     <div>
@@ -146,7 +146,7 @@ export default function LayerNode({ id, data, setNodes }) {
                         <label>In Channels: </label>
                         <input
                             value={params.inChannels || ""}
-                            onChange={(e) => handleChange("in", e.target.value)}
+                            onChange={(e) => handleChange("inChannels", e.target.value)}
                         />
                     </div>
 
@@ -154,7 +154,7 @@ export default function LayerNode({ id, data, setNodes }) {
                         <label>Out Channels: </label>
                         <input
                             value={params.outChannels || ""}
-                            onChange={(e) => handleChange("out", e.target.value)}
+                            onChange={(e) => handleChange("outChannels", e.target.value)}
                         />
                     </div>
                     <div>

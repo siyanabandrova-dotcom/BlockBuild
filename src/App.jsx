@@ -21,6 +21,11 @@ import AddLayerButton from "./AddLayerButton.jsx";
 import LayerNode from "./LayerNode";
 import TrainingDataInput from "./TrainingDataInput.jsx";
 import { parseSample, validateAllSamples } from "./parseSample.jsx";
+import ConcatNode from "./ConcatNode";
+import Softmax from "./Softmax.jsx";
+import MatMulNode from "./MatMulNode.jsx";
+import ScaleNode from "./ScaleNode.jsx";
+import MaskNode from "./MaskNode.jsx";
 
 
 const NODE_WIDTH = 120;
@@ -59,6 +64,11 @@ export default function App() {
     maxpool: (props) => <MaxPool {...props} setNodes={setNodes} />,
     adaptiveavgpool: (props) => <AdaptiveAvgPool {...props} setNodes={setNodes} />,
     layer: (props) => <LayerNode {...props} setNodes={setNodes} />,
+    concat:(props) => <ConcatNode {...props} setNodes={setNodes} />,
+    softmax: (props) => <Softmax {...props} setNodes={setNodes} />,
+    matmul: (props) => <MatMulNode {...props} setNodes={setNodes}/>,
+    scale: (props) => <ScaleNode {...props} setNodes={setNodes}/>,
+    mask: (props) => <MaskNode {...props} setNodes={setNodes}/>,
   }), [setNodes]);
 
   const onAddNode = (type) => {
@@ -182,6 +192,94 @@ export default function App() {
     setNodes((nds) => [...nds, newNode]);
   }
 
+  const updateConcatDate = (id, newData) =>{
+    setNodes((nds) =>
+      nds.map((node) => 
+        node.id == id
+        ? {...node, data: {...node.data, ...newData}}
+        : node
+      ) 
+    );
+  };
+  
+  const handleAddConcatNode = () =>{
+    const newNode ={
+      id: crypto.randomUUID(),
+      type: "concat",
+      position: {x: 200, y: 200},
+      data: {
+        label: "Concat",
+        type: "concat",
+        inputsCount: 2,
+        onChange: updateConcatDate,
+      },
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
+    };
+    setNodes((nds) => [...nds, newNode]);
+  }
+
+  const handleAddSoftmaxNode = () =>{
+    const newNode = {
+      id: crypto.randomUUID(),
+      type: "softmax",
+      position: {x: 200, y: 200},
+      data: {
+        label: "Softmax",
+        type: "softmax",
+        softmaxDim: 2,
+      },
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
+    };
+    setNodes((nds) => [...nds, newNode]);
+  }
+
+  const handleAddMatMulNode = () =>{
+    const newNode = {
+      id: crypto.randomUUID(),
+      type: "matmul",
+      position: {x: 200, y: 200},
+      data: {
+        label: "MatMul",
+        type: "matmul",
+      },
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
+    };
+    setNodes((nds) => [...nds, newNode]);
+  }
+
+  const handleAddScaleNode = () =>{
+    const newNode = {
+      id: crypto.randomUUID(),
+      type: "scale",
+      position: {x: 200, y: 200},
+      data:{
+        label: "Scale",
+        type: "scale",
+      },
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
+    };
+    setNodes((nds) => [...nds, newNode]);
+  }
+
+  const handleAddMaskNode = () =>{
+    const newNode = {
+      id: crypto.randomUUID(),
+      type: "mask",
+      position: {x: 200, y: 200},
+      data:{
+        label: "Mask",
+        type: "mask"
+      },
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
+    };
+    setNodes((nds) => [...nds, newNode]);
+  }
+
   const getOutputDim = (node) => {
     if (!node || !node.data) return null;
 
@@ -279,7 +377,9 @@ export default function App() {
     setTrainingStatus("Dataset loaded successfully!")
   };
 
-  const API_URL = "https://blockbuild-fvhs.onrender.com";
+  //const API_URL = "https://blockbuild-fvhs.onrender.com";
+  //const API_URL = "https://blockbuild-ai-u4d8.onrender.com";
+  //const API_URL = "http://localhost:8000/run";
 
   
   // Train
@@ -317,7 +417,7 @@ export default function App() {
     };
     
     try{
-      const res = await fetch(/*"http://localhost:8000/train"*/ `${API_URL}/train`, {
+      const res = await fetch("http://localhost:8000/train"/* `${API_URL}/train`*/, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(payload),
@@ -364,6 +464,7 @@ export default function App() {
 
   // Single test
   const handleRun = async () =>{
+    console.log("🔥 handleRun called");
     try{
       const parsedTest=parseSample(testInput);
 
@@ -371,20 +472,28 @@ export default function App() {
         throw new Error("Parsed test input is invalid.");
       }
 
-      const res = await fetch(/*"http://localhost:8000/run"*/ `${API_URL}/run`, {
+      const res = await fetch("http://localhost:8000/run"/* `${API_URL}/run`*/, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ input: parsedTest.data}),
+        body: JSON.stringify({
+          input: parsedTest.data
+        }),
       })
       //console.log("RAW RESPONSE:", data);
 
       const data=await res.json();
       setTestOutput(JSON.stringify(data.output));
       appendToConsole("TEST OUTPUT");
+      
       //appendToConsole("Input: " + JSON.stringify(parsedTest.data));
-      appendToConsole(`Input: ${parsedTest.data}`);
+      appendToConsole("Input: " + parsedTest.data.join(", "));
+
+      appendToConsole("Output: " + JSON.stringify(data.output));
+      //appendToConsole("Output: " + data.output.join(", "));
+      //appendToConsole("Input: " + JSON.stringify(parsedTest.data));
+      //appendToConsole(`Input: ${parsedTest.data}`);
       //appendToConsole("Output: " + JSON.stringify(data.output));
-      appendToConsole(`Output: ${data.output}`);
+      //appendToConsole(`Output: ${data.output}`);
 
       setTestOutput(JSON.stringify(data.output));
       
@@ -406,8 +515,10 @@ export default function App() {
           borderRadius: "8px",
           border: "0px solid black",
           minWidth: "180px",
-          minHeigth: "20px",
-          //textAlign: "center",
+          minHeigth: "40px",
+
+          overflowX: "auto",
+          overflowY: "hidden",
         }}>
         <button onClick={handleAddLinear}>➕ Add Linear</button>
         <button onClick={handleAddReLU}>➕ Add ReLU</button>
@@ -436,7 +547,7 @@ export default function App() {
             {label: "AvgPool1D", value: "avgpool1d"},
             {label: "AvgPool2D", value: "avgpool2d"},
             {label: "AvgPool3D", value: "avdpool3d"},
-          ]}
+          ]}  
           onAddNode={(value) => onAddNode(value)}/>
         <AddLayerButton
           label="Add MaxPooling Layer"
@@ -453,6 +564,22 @@ export default function App() {
             {label: "AdaptiveAvgPool2D", value: "adaptiveavgpool2d"},
           ]}
           onAddNode={(value) => onAddNode(value)}/>
+
+        <button onClick={() => handleAddConcatNode("concat")}>
+          ➕Concat
+        </button>
+        <button onClick={() => handleAddSoftmaxNode("softmax")}>
+          ➕Softmax
+        </button>
+        <button onClick={() => handleAddMatMulNode("matmul")}>
+          ➕MatMul
+        </button>
+        <button onClick={() => handleAddScaleNode("scale")}>
+          ➕Scale
+        </button>
+        <button onClick={() => handleAddMaskNode("mask")}>
+          ➕Mask
+        </button>
 
         {/* Training and Testing*/}
         <div style={{
@@ -483,7 +610,10 @@ export default function App() {
             rows={3}
             placeholder="Enter test input (only one test)"
           />
-          <button onClick={handleRun}>Run</button>
+          {/*<button onClick={handleRun}>Run</button>*/}
+          <button type="button" onClick={handleRun}>
+            Run
+          </button>
         </div>
 
         <label style={{ display: "flex", alignItems: "center", gap: 5, color: "white"}}>

@@ -24,7 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+model = None
 class NodeData(BaseModel):
     id: str
     type: str  # "linear", "relu", "dropout", "layernorm", "conv", "maxpool"
@@ -67,6 +67,10 @@ class NodeData(BaseModel):
     seqLen: Optional[int] = None
 
     outputSize: Optional[int] = None
+
+    inputsCount: Optional[int] = None
+
+    softmaxDim: Optional[int] = None
 
 
 class EdgeData(BaseModel):
@@ -119,66 +123,29 @@ def topological_sort(nodes, edges):
     return result
 
 
-def ensure_conv_input(z: torch.Tensor, dim: str) -> torch.Tensor:
-    if dim == "1d":
-        if z.dim() == 2:  
-            return z.unsqueeze(1) 
-        if z.dim() == 3: 
-            return z
-        raise ValueError(f"Conv1d expects 2D or 3D input, got shape {tuple(z.shape)}")
-
-    if dim == "2d":
-        if z.dim() == 2: 
-            return z.unsqueeze(1).unsqueeze(-1)
-        if z.dim() == 4:
-            return z
-        raise ValueError(f"Conv2d expects 2D or 4D input, got shape {tuple(z.shape)}")
-
-    if dim == "3d":
-        if z.dim() == 2: 
-            return z.unsqueeze(1).unsqueeze(-1).unsqueeze(-1)
-        if z.dim() == 5:
-            return z
-        raise ValueError(f"Conv3d expects 2D or 5D input, got shape {tuple(z.shape)}")
-
-    raise ValueError(f"Unknown dim: {dim}")
-
-def adapt_input_to_layer(z, layer, layer_type):
-    # Linear (batch, features)
-    if isinstance(layer, nn.Linear):
-        z = z.float()
-        if z.dim()>2:
-            z = z.view(z.size(0), -1)
-        
-        return z
-
-    if any(isinstance(layer, t) for t in [nn.Conv1d, nn.ConvTranspose1d, nn.MaxPool1d, nn.AvgPool1d, nn.AdaptiveAvgPool1d]):
-        if z.dim() == 2:
-            z = z.unsqueeze(1)
-
-        if z.dim() == 3:
-            return z
-
-        z = z.view(z.size(0), 1, -1)
-        return z
+def get_inputs_for_nodes(node_id, edges, node_outputs):
+    inputs = []
+    for e in edges:
+        if e.target == node_id:
+            if e.source not in node_outputs:
+                raise RuntimeError(
+                    f"Edge error: '{e.source}' -> '{node_id}'"
+                    f"but source is not computed yet"
+                )
+            inputs.append(node_outputs[e.source])
     
-    if isinstance(layer, nn.Embedding):
-        if z.dim() == 2 and z.size(1) > 1:
-            z = torch.argmax(z, dim=1).view(-1, 1)
-        
-        if z.dim() == 1:
-            z = z.view(-1, 1)
+    return inputs
 
-        return z.long()
-
-    return z
-
+graph_nodes = []
+graph_edges = []
 sorted_nodes=[]
 layers={}
 
 @app.post("/train")
 def train(graph: GraphRequest):
-    global layers, sorted_nodes
+    global layers, sorted_nodes, graph_nodes, graph_edges
+    graph_nodes = graph.nodes
+    graph_edges = graph.edges
 
     samples = graph.training
     num_epochs = graph.epochs or 20
@@ -195,9 +162,9 @@ def train(graph: GraphRequest):
     except Exception as e:
         return {"error": f"Topological sort failed: {e}"}
     
-    print("SORTED:", sorted_nodes)
-    print("LAYERS:", layers.keys())
-    
+    #print("SORTED:", sorted_nodes)
+    #print("LAYERS:", layers.keys())
+
     layers={}
     for node in sorted_nodes:
         t=node.type.lower()
@@ -278,13 +245,30 @@ def train(graph: GraphRequest):
                 node.embeddingDim or 16
             )
 
+        elif t == "concat":
+            layers[node.id] = None
+        
+        elif t == "softmax":
+            dim = node.softmaxDim if node.softmaxDim is not None else -1
+            layers[node.id] = nn.Softmax(dim = dim)
+
+        elif t == "matmul":
+            layers[node.id] = None
+        
+        elif t == "scale":
+            layers[node.id] = None
+
+        elif t == "mask":
+            layers[node.id] = None
+
     for node in sorted_nodes:
         print("Node: ",node.id, node.type)
 
-    print("Sorted nodes IDs:", [n.id for n in sorted_nodes])
-    print("Layer keys:", list(layers.keys()))
+    #print("Sorted nodes IDs:", [n.id for n in sorted_nodes])
+    #print("Layer keys:", list(layers.keys()))
 
     def forward_once(z):
+        node_outputs = {}
 
         if z.dim() == 3 and z.shape[1] == 1:
             z = z.transpose(1, 2)
@@ -292,10 +276,25 @@ def train(graph: GraphRequest):
             z = z.unsqueeze(2)
 
         for node in sorted_nodes:
-            layer = layers[node.id]
+            
             t = node.type.lower()
 
-            print("Node", node.id, node.type, "input shape:", z.shape)
+            incoming = get_inputs_for_nodes(node.id, graph.edges, node_outputs)
+
+            if not incoming:
+                z = x
+            elif t == "concat":
+                z = torch.cat(incoming, dim=1)
+                node_outputs[node.id] = z
+            else:
+                z = incoming[0]
+
+            if t == "concat":
+                node_outputs[node.id] = z
+                continue
+            
+            layer = layers[node.id]
+            #print("Node", node.id, node.type, "input shape:", z.shape)
 
             if t in [
                 "conv1d", "convtranspose1d",
@@ -308,8 +307,8 @@ def train(graph: GraphRequest):
 
                 z = layer(z)
 
-            elif t in ["linear", "layernorm", "relu", "dropout"]:
-                if z.dim() == 3:
+            elif t in ["linear", "layernorm", "relu", "dropout", "softmax"]:
+                if z.dim() == 3 and t != "softmax":
                     z = z.squeeze(-1)
 
                 z = layer(z)
@@ -319,15 +318,50 @@ def train(graph: GraphRequest):
                 z = layer(z)
                 z = z.mean(dim=1)
 
-            else:
-                print("⚠️ Unknown node type, using Identity:", node.id, node.type)
-                layers[node.id] = nn.Identity()
+            elif t == "matmul":
+                if len(incoming) != 2:
+                    raise ValueError("MatMul node must have exactly 2 inputs")
+                
+                a, b = incoming
+                if a.dim() == 1:
+                    a = a.unsqueeze(0)
+                if b.dim() == 1:
+                    b = b.unsqueeze(0)
 
-        return z
+                z = torch.matmul(a, b.T)
+                node_outputs[node.id] = z
+                continue
+
+            elif t == "scale":
+                d_k = z.shape[-1]
+                z = z / math.sqrt(d_k)
+                node_outputs[node.id] = z
+                continue
+
+            elif t == "mask":
+                scores = incoming[0]
+
+                T = scores.shape[-1]
+
+                mask = torch.triu(
+                    torch.ones(T, T, device=scores.device),
+                    diagonal=1
+                ) * (-1e9)
+
+                scores = scores + mask
+                node_outputs[node.id] = scores
+
+            else:
+                raise ValueError(f"Unknown node type: {node.type} (node id: {node.id})")
+            
+            node_outputs[node.id] = z
+
+        return node_outputs[sorted_nodes[-1].id]
         
     params = []
     for m in layers.values():
-        params += list(m.parameters())
+        if m is not None:
+            params += list(m.parameters())
 
     optimizer = torch.optim.SGD(params, lr=lr)
     #optimizer = torch.optim.Adam(params, lr=lr)
@@ -348,7 +382,8 @@ def train(graph: GraphRequest):
         loss_history.append(float(loss.item()))
 
     for layer in layers.values():
-        layer.eval()
+        if layer is not None:
+            layer.eval()
 
     with torch.no_grad():
         out = forward_once(x)
@@ -368,6 +403,7 @@ def train(graph: GraphRequest):
     plt.savefig("loss.png")
     plt.close()
 
+    #print("FINAL MODEL:", {k: type(v).__name__ for k,v in layers.items()})
 
     return {
         "output": out.tolist(),
@@ -381,7 +417,18 @@ def train(graph: GraphRequest):
 
 @app.post("/run")
 def run_single(data: dict):
-    global layers, sorted_nodes
+    #print("RUN INPUT RAW:", data)
+    print("===== RAW DATA =====")
+    print(data)
+    print("TYPE:", type(data))
+    print("====================")
+
+    global layers, sorted_nodes, graph_edges
+    try: 
+        sorted_nodes=topological_sort(graph_nodes, graph_edges) 
+    except Exception as e:
+        return {"error": f"Topological sort failed: {e}"}
+    
     if not layers:
         return {"error": "Model not trained"}
 
@@ -390,11 +437,32 @@ def run_single(data: dict):
         return {"error": "No input provided"}
 
     try:
-        x = torch.tensor(inp["data"], dtype=torch.float32).view(1, -1)
+        inp = data.get("input")
+
+        if isinstance(inp, list):
+            values = inp
+
+        elif isinstance(inp, dict) and "data" in inp:
+            values = inp["data"]
+
+        else: 
+            raise ValueError(f"Unsupported input format: {inp}")
+        #x = torch.tensor(inp["data"], dtype=torch.float32).view(1, -1)
+        x = torch.tensor(values, dtype=torch.float32).view(1, -1)
+        print("RUN INPUT TENSOR:", x, x.shape)
+
     except Exception:
         return {"error": "Invalid input format"}
 
+    if x.dim() == 1:
+        x = x.unsqueeze(0)
+
+    print("SORTED NODES:", [node.id for node in sorted_nodes])
+
+    #z_input = x
+
     def forward_once(z):
+        node_outputs = {}
 
         if z.dim() == 3 and z.shape[1] == 1:
             z = z.transpose(1, 2)
@@ -402,8 +470,22 @@ def run_single(data: dict):
             z = z.unsqueeze(2)
 
         for node in sorted_nodes:
-            layer = layers[node.id]
             t = node.type.lower()
+            incoming = get_inputs_for_nodes(node.id, graph_edges, node_outputs)
+
+            if not incoming:
+                z = x
+            elif t == "concat":
+                z = torch.cat(incoming, dim=1)
+                node_outputs[node.id] = z
+            else:
+                z = incoming[0]
+
+            if t == "concat":
+                node_outputs[node.id] = z
+                continue
+            
+            layer = layers[node.id]
 
             print("Node", node.id, node.type, "input shape:", z.shape)
 
@@ -418,8 +500,8 @@ def run_single(data: dict):
 
                 z = layer(z)
 
-            elif t in ["linear", "layernorm", "relu", "dropout"]:
-                if z.dim() == 3:
+            elif t in ["linear", "layernorm", "relu", "dropout", "softmax"]:
+                if z.dim() == 3 and t != "softmax":
                     z = z.squeeze(-1)
 
                 z = layer(z)
@@ -429,9 +511,36 @@ def run_single(data: dict):
                 z = layer(z)
                 z = z.mean(dim=1)
 
+
+            elif t == "matmul":
+                if len(incoming) != 2:
+                    raise ValueError("MatMul node must have exactly 2 inputs")
+                
+                a, b = incoming
+                if a.dim() == 1:
+                    a = a.unsqueeze(0)
+                if b.dim() == 1:
+                    b = b.unsqueeze(0)
+
+                z = torch.matmul(a, b.T)
+                node_outputs[node.id] = z
+                continue
+
+            elif t == "scale":
+                d_k = z.shape[-1]
+                z = z / math.sqrt(d_k)
+                node_outputs[node.id] = z
+                continue
+
+
             else:
-                print("⚠️ Unknown node type, using Identity:", node.id, node.type)
-                layers[node.id] = nn.Identity()
+                raise ValueError(f"Unknown node type: {node.type} (node id: {node.id})")
+         
+            node_outputs[node.id] = z
+
+        return node_outputs[sorted_nodes[-1].id]
+
+
 
         return z
     
@@ -439,7 +548,13 @@ def run_single(data: dict):
     with torch.no_grad():
         out = forward_once(x)
 
-    output_list = out.cpu().numpy().tolist()
+    #output_list = out.cpu().numpy().tolist()
+    #output_list = out.cpu().numpy().tolist()
+    #output_list = out.squeeze().item()
+    output_list = out.squeeze().cpu().numpy().tolist()
+
+    #print("RUN OUTPUT RAW:", out)
+    #print("TYPE:", type(out))
 
     return {"output": output_list}
 
