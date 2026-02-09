@@ -1,3 +1,5 @@
+Website: https://blockbuildai.web.app/
+
 BlockBuild – Installation & Run Guide
 BlockBuild is a visual, block-based editor for designing neural network architectures.
 The project consists of two main components:- Frontend – React application (visual neural network editor)- Backend – FastAPI + PyTorch (model execution and training)
