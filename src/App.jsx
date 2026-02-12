@@ -51,6 +51,8 @@ export default function App() {
   //const [trainOutput, setTrainOutput] = useState(null);
   const [consoleOutput, setConsoleOutput] = useState([]);
   const [testOutput, setTestOutput] = useState("");
+  const [inputSource, setInputSource] = useState("manual");
+  const [batchSize, setBatchSize] = useState(64);
 
   const nodeTypes = React.useMemo(() => ({
     linear: (props) => <LinearNode {...props} setNodes={setNodes} />,
@@ -384,123 +386,245 @@ export default function App() {
   
   // Train
   const handleTrain = async () =>{
-    if (!trainingSamples || trainingSamples.length === 0) {
-      setTrainingStatus("No training samples loaded!");
-      return;
-    }
-    //setTrainOutput(null);
-    setConsoleOutput([]);
-    
-    setTrainingStatus("Training...");
-    
-    const payload ={
-      
-      nodes: nodes.map(n => {
-          const safeType = n.data?.type
-              ? n.data.type
-              : (n.type === "layer" ? null : n.type);
-
-          if (!safeType) {
-              console.error("❗ Node missing data.type → FIX THIS NODE:", n);
-          }
-
-          return {
-              id: n.id,
-              type: safeType,
-              ...n.data
-          };
-      }),
-      epochs,
-      learningRate,
-      edges: edges.map(e => ({ source: e.source, target: e.target })),
-      training: trainingSamples,
-    };
-    
-    try{
-      const res = await fetch("http://localhost:8000/train"/* `${API_URL}/train`*/, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload),
-      });
-      
-      if(!res.ok){
-        const txt = await res.text();
-        console.log("SERVER ERROR:", txt);
-        setTrainingStatus("Training failed!");
+    if(inputSource == "manual"){
+      if (!trainingSamples || trainingSamples.length === 0) {
+        setTrainingStatus("No training samples loaded!");
         return;
       }
+      //setTrainOutput(null);
+      setConsoleOutput([]);
       
-      const data= await res.json();
+      setTrainingStatus("Training...");
       
-      setConsoleOutput(data);
-      
-      console.log("TRAIN OUTPUT:", consoleOutput);
-      console.log("OUTPUT LENGTH:", consoleOutput?.output?.length);
+      const payload ={
 
-      appendToConsole("TRAINING OUTPUT");
-      setTrainingStatus(data.message || "Training completed!");
-      if(data.output){
-        appendToConsole(
-          //"Model output:\n" + data.output.map((o, i) => `Sample ${i+1}: ${o[0]}`).join("\n")
-          "Model output:\n" + data.output.map((o, i) => `Sample ${i}: ${o.join(", ")}`).join("\n")
-        );
-      }
+        inputSource,
+        nodes: nodes.map(n => {
+            const safeType = n.data?.type
+                ? n.data.type
+                : (n.type === "layer" ? null : n.type);
 
-    if(data.loss!==undefined){
-      appendToConsole(`Loss: ${data.loss}`);
-    }
+            if (!safeType) {
+                console.error("❗ Node missing data.type → FIX THIS NODE:", n);
+            }
 
-    if(Array.isArray(data.loss_history)){
-      appendToConsole("Loss history: ");
-      data.loss_history.forEach((v, i) =>
-        appendToConsole(`Epoch ${i+1}: ${v}`)
-      )
-    }
-    } catch (err) {
-      console.error(err);
-      setTrainingStatus("Training failed! (network error)");
-    }
-  }
-
-  // Single test
-  const handleRun = async () =>{
-    console.log("🔥 handleRun called");
-    try{
-      const parsedTest=parseSample(testInput);
-
-      if(!parsedTest || !parsedTest.data){
-        throw new Error("Parsed test input is invalid.");
-      }
-
-      const res = await fetch("http://localhost:8000/run"/* `${API_URL}/run`*/, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          input: parsedTest.data
+            return {
+                id: n.id,
+                type: safeType,
+                ...n.data
+            };
         }),
-      })
-      //console.log("RAW RESPONSE:", data);
+        epochs,
+        learningRate,
+        edges: edges.map(e => ({ source: e.source, target: e.target })),
+        training: trainingSamples,
+        };
+        try{
+        const res = await fetch("http://localhost:8000/train"/* `${API_URL}/train`*/, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(payload),
+        });
+        
+        if(!res.ok){
+          const txt = await res.text();
+          console.log("SERVER ERROR:", txt);
+          setTrainingStatus("Training failed!");
+          return;
+        }
+        
+        const data= await res.json();
+        
+        setConsoleOutput(data);
+        
+        console.log("TRAIN OUTPUT:", consoleOutput);
+        console.log("OUTPUT LENGTH:", consoleOutput?.output?.length);
 
-      const data=await res.json();
-      setTestOutput(JSON.stringify(data.output));
-      appendToConsole("TEST OUTPUT");
-      
-      //appendToConsole("Input: " + JSON.stringify(parsedTest.data));
-      appendToConsole("Input: " + parsedTest.data.join(", "));
+        appendToConsole("TRAINING OUTPUT");
+        setTrainingStatus(data.message || "Training completed!");
+        if(data.output){
+          appendToConsole(
+            //"Model output:\n" + data.output.map((o, i) => `Sample ${i+1}: ${o[0]}`).join("\n")
+            "Model output:\n" + data.output.map((o, i) => `Sample ${i}: ${o.join(", ")}`).join("\n")
+          );
+        }
 
-      appendToConsole("Output: " + JSON.stringify(data.output));
-      //appendToConsole("Output: " + data.output.join(", "));
-      //appendToConsole("Input: " + JSON.stringify(parsedTest.data));
-      //appendToConsole(`Input: ${parsedTest.data}`);
-      //appendToConsole("Output: " + JSON.stringify(data.output));
-      //appendToConsole(`Output: ${data.output}`);
+      if(data.loss!==undefined){
+        appendToConsole(`Loss: ${data.loss}`);
+      }
 
-      setTestOutput(JSON.stringify(data.output));
-      
-    }catch(err) {
-      setTestOutput("Error: "+err.message);    
+      if(Array.isArray(data.loss_history)){
+        appendToConsole("Loss history: ");
+        data.loss_history.forEach((v, i) =>
+          appendToConsole(`Epoch ${i+1}: ${v}`)
+        )
+      }
+      } catch (err) {
+        console.error(err);
+        setTrainingStatus("Training failed! (network error)");
+      }
     }
+    if(inputSource === "dataset"){
+      try{
+        setTrainingStatus("Training on MNIST...");
+        setConsoleOutput([]);
+
+        const payload = {
+          inputSource: "dataset",
+          nodes: nodes.map(n => {
+              const safeType = n.data?.type
+                  ? n.data.type
+                  : (n.type === "layer" ? null : n.type);
+
+              if (!safeType) {
+                  console.error("❗ Node missing data.type → FIX THIS NODE:", n);
+              }
+
+              return {
+                  id: n.id,
+                  type: safeType,
+                  ...n.data
+              };
+          }),
+          edges: edges.map(e => ({ source: e.source, target: e.target })),
+          epochs,
+          learningRate,
+          batchSize,
+        }
+
+        const res = await fetch("http://localhost:8000/train_mnist", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        setConsoleOutput(data);
+        /*if(data.output){
+          appendToConsole(
+            //"Model output:\n" + data.output.map((o, i) => `Sample ${i+1}: ${o[0]}`).join("\n")
+            "Model output:\n" + data.output.map((o, i) => `Sample ${i}: ${o.join(", ")}`).join("\n")
+          );
+        }*/
+
+        appendToConsole("TRAINING OUTPUT");
+
+        appendToConsole(
+        `Accuracy: ${(data.accuracy * 100).toFixed(2)}%`
+        );
+
+        appendToConsole(
+          `Correct: ${data.correct} / ${data.total}`
+        );
+
+        if(Array.isArray(data.samples)){
+          data.samples.forEach((s, i) =>{
+            appendToConsole(
+              `Sample ${i}: true=${s.true}, pred=${s.pred}`
+            );
+          });
+        }
+
+        if(data.loss!==undefined){
+          appendToConsole(`Loss: ${data.loss}`);
+        }
+
+        if(Array.isArray(data.loss_history)){
+          appendToConsole("Loss history: ");
+          data.loss_history.forEach((v, i) =>
+            appendToConsole(`Epoch ${i+1}: ${v}`)
+          )
+        }
+        setTrainingStatus('MNIST training completed.');
+      } catch(err){
+        console.error("NETWORK ERROR:", err);
+        setTrainingStatus("Training failed! (network error)");
+      }
+
+    }
+  
   }
+
+ // Single test
+  const handleRun = async () =>{
+    if(inputSource == "manual"){
+      console.log("🔥 handleRun called");
+      try{
+        const parsedTest=parseSample(testInput);
+
+        if(!parsedTest || !parsedTest.data){
+          throw new Error("Parsed test input is invalid.");
+        }
+
+        const res = await fetch("http://localhost:8000/run"/* `${API_URL}/run`*/, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            input: parsedTest.data
+          }),
+        })
+        //console.log("RAW RESPONSE:", data);
+
+        const data=await res.json();
+        setTestOutput(JSON.stringify(data.output));
+        appendToConsole("TEST OUTPUT");
+        
+        //appendToConsole("Input: " + JSON.stringify(parsedTest.data));
+        appendToConsole("Input: " + parsedTest.data.join(", "));
+
+        appendToConsole("Output: " + JSON.stringify(data.output));
+        //appendToConsole("Output: " + data.output.join(", "));
+        //appendToConsole("Input: " + JSON.stringify(parsedTest.data));
+        //appendToConsole(`Input: ${parsedTest.data}`);
+        //appendToConsole("Output: " + JSON.stringify(data.output));
+        //appendToConsole(`Output: ${data.output}`);
+
+        setTestOutput(JSON.stringify(data.output));
+        
+      }catch(err) {
+        setTestOutput("Error: "+err.message);    
+      }
+    }
+    if(inputSource == "dataset"){
+      console.log("HandleRun called (dataset)");
+      
+
+      try{
+        setTrainingStatus("Testing on MNIST...");
+        const res = await fetch("http://localhost:8000/test_mnist", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+        })
+
+        const data = await res.json();
+
+        appendToConsole("TEST OUTPUT");
+        appendToConsole(
+        `Accuracy: ${(data.accuracy * 100).toFixed(2)}%`
+        );
+        appendToConsole(
+          `Correct: ${data.correct} / ${data.total}`
+        );
+
+        if(Array.isArray(data.samples)){
+          data.samples.forEach((s, i) =>{
+            appendToConsole(
+              `Sample ${i}: true=${s.true}, pred=${s.pred}`
+            );
+          });
+        }
+        
+        setTestOutput(JSON.stringify(data, null, 2));
+        setTrainingStatus("MNIST testing completed.");
+      } catch (err){
+        appendToConsole("Dataset test failed");
+        setTestOutput("Error" + err.message);
+        
+        setTrainingStatus("Testing failed! (network error)");
+      }
+    }
+    
+  };
 
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
@@ -597,23 +721,88 @@ export default function App() {
             minHeight: "200px",
           }}>
 
-          <h3> Training </h3>
-          <TrainingDataInput onDataReady={handleDatasetSubmit} />
-          <button onClick={handleTrain}> Train </button>
-          <p>{trainStatus}</p>
+          <h3> Input Source</h3>
+          <label>
+            <input
+              type = "radio"
+              value = "manual"
+              checked = {inputSource === "manual"}
+              onChange={() => setInputSource("manual")}
+            />
+            Manual
+          </label>
+          <br/>
 
-          <h3> Testing </h3>
-          <textarea
-            value={testInput}
-            onChange={(e) => setTestInput(e.target.value)}
-            style={{width: "300px", height: "80px"}}
-            rows={3}
-            placeholder="Enter test input (only one test)"
-          />
-          {/*<button onClick={handleRun}>Run</button>*/}
-          <button type="button" onClick={handleRun}>
-            Run
-          </button>
+          <label> 
+            <input
+              type = "radio"
+              value = "dataset"
+              checked = {inputSource === "dataset"}
+              onChange={() => setInputSource("dataset")}
+            />
+            Dataset (MNIST)
+          </label>
+          <hr/>
+
+          {inputSource === "manual" && (
+            <div>
+            <h3> Training </h3>
+            <TrainingDataInput onDataReady={handleDatasetSubmit} />
+            <button onClick={handleTrain}> Train </button>
+            <p>{trainStatus}</p>
+
+            <h3> Testing </h3>
+            <textarea
+              value={testInput}
+              onChange={(e) => setTestInput(e.target.value)}
+              style={{width: "300px", height: "80px"}}
+              rows={3}
+              placeholder="Enter test input (only one test)"
+            />
+            {/*<button onClick={handleRun}>Run</button>*/}
+            <button type="button" onClick={handleRun}>
+              Run
+            </button>
+          </div>
+        )}
+
+        {inputSource === "dataset" && (
+          <div style = {{ marginBottom: 10}}>
+            <label> 
+              Dataset: 
+              <select disabled>
+                <option> MNIST </option>
+              </select>
+            </label>
+
+            <br/>
+
+            <label> 
+              Batch size
+              <input
+                type="number"
+                defaultValue={64}
+                min={1}
+                max={1024}
+                value={batchSize}
+                onChange={(e) => setBatchSize(Number(e.target.value))}
+                style={{width: 80}}
+              />
+            </label>
+            <>
+              <button type="button" onClick={handleTrain}>
+                Train on MNIST train set
+              </button>
+              <button type="button" onClick={handleRun}> 
+                Run on MNIST test set
+              </button>
+              <p>{trainStatus}</p>
+            </>
+
+          </div> 
+        )}
+
+          
         </div>
 
         <label style={{ display: "flex", alignItems: "center", gap: 5, color: "white"}}>

@@ -7,6 +7,9 @@ import torch.nn as nn
 import math
 from fastapi.middleware.cors import CORSMiddleware
 
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+
 
 import matplotlib
 matplotlib.use("Agg") 
@@ -27,7 +30,7 @@ app.add_middleware(
 model = None
 class NodeData(BaseModel):
     id: str
-    type: str  # "linear", "relu", "dropout", "layernorm", "conv", "maxpool"
+    type: Optional[str] = None  # "linear", "relu", "dropout", "layernorm", "conv", "maxpool"
 
     inFeatures: Optional[int] = None
     outFeatures: Optional[int] = None
@@ -72,6 +75,9 @@ class NodeData(BaseModel):
 
     softmaxDim: Optional[int] = None
 
+    class Config:
+        extra = "allow"
+
 
 class EdgeData(BaseModel):
     source: str
@@ -83,11 +89,16 @@ class TrainingSample(BaseModel):
 
 
 class GraphRequest(BaseModel):
+    inputSource: Optional[Literal["manual", "dataset"]] = "manual"
     nodes: List[NodeData]
     edges: List[EdgeData]
     epochs: Optional[int]=20
     learningRate: Optional[float]=0.01
-    training: List[TrainingSample] 
+    batchSize: Optional[int] = 64
+    training: Optional[List[TrainingSample]] = None
+
+    class Config:
+        extra = "allow"
 
 class RunRequest(BaseModel):
     input: dict
@@ -141,6 +152,98 @@ graph_edges = []
 sorted_nodes=[]
 layers={}
 
+
+def load_mnist(batch_size=64):
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,),(0.3081,))
+    ])
+    train_ds = datasets.MNIST(
+        root = "./data",
+        train = True,
+        download = True,
+        transform = transform
+    )
+    
+    test_ds = datasets.MNIST(
+        root = "./data",
+        train = False,
+        download = True,
+        transform = transform
+    )
+
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+
+
+    return train_loader, test_loader
+
+
+def forward_once(z):
+        node_outputs = {}
+
+        if z.dim() == 4:
+            z = z.view(z.size(0), -1)
+
+        #if z.dim() == 2:
+        #    z = z.unsqueeze(2)
+
+        for node in sorted_nodes:
+            t = node.type.lower()
+            incoming = get_inputs_for_nodes(node.id, graph_edges, node_outputs)
+
+            if not incoming:
+                current = z
+            elif t == "concat":
+                current = torch.cat(incoming, dim=1)
+            else:
+                current = incoming[0]
+
+            layer = layers[node.id]
+
+            if t in ["conv1d", "convtranspose1d", "maxpool1d", "avgpool1d", "adaptiveavgpool1d"]:
+                if current.dim() == 2:
+                    current = current.unsqueeze(2)
+                elif current.dim() == 3 and current.shape[1] == 1:
+                    current = current.transpose(1, 2)
+
+                current = layer(current)
+            
+            elif t in ["linear", "layernorm", "relu", "dropout", "softmax"]:
+                #if current.dim() == 3 and t != "softmax":
+                #    current = current.squeeze(-1)
+                #print("INPUT SHAPE:", current.shape)
+                current = layer(current)
+                #print("OUTPUT SHAPE:", current.shape)
+
+            elif t == "embedding":
+                current = layer(current.long()).mean(dim=1)
+
+            elif t == "matmul":
+                a, b= incoming
+                current = torch.matmul(a, b.T)
+
+            elif t == "scale":
+                current = current / math.sqrt(current.shape[-1])
+
+            elif t == "mask":
+                scores = incoming[0]
+
+                T = scores.shape[-1]
+
+                mask = torch.triu(
+                    torch.ones(T, T, device=scores.device),
+                    diagonal=1
+                ) * (-1e9)
+  
+                current = scores + mask 
+
+            else:
+                raise ValueError(f"Unknown node type {node.type}")
+            node_outputs[node.id] = current
+
+        return node_outputs[sorted_nodes[-1].id]
+    
 @app.post("/train")
 def train(graph: GraphRequest):
     global layers, sorted_nodes, graph_nodes, graph_edges
@@ -405,6 +508,8 @@ def train(graph: GraphRequest):
 
     #print("FINAL MODEL:", {k: type(v).__name__ for k,v in layers.items()})
 
+    print("Return result.")
+
     return {
         "output": out.tolist(),
         "loss": clean_loss_history[-1],
@@ -413,6 +518,288 @@ def train(graph: GraphRequest):
         "loss_history": clean_loss_history,
     }
 
+@app.post("/train_mnist")
+def train_mnist(graph: GraphRequest):
+    num_epochs = graph.epochs or 5
+    lr = graph.learningRate or 0.001
+    batch_size = graph.batchSize or 64
+    train_loader, test_loader = load_mnist(batch_size)
+
+    global layers, sorted_nodes, graph_nodes, graph_edges
+
+    sorted_nodes = topological_sort(graph.nodes, graph.edges)
+
+    graph_edges = graph.edges
+    graph_nodes = graph.nodes
+
+    layers={}
+    for node in sorted_nodes:
+        t=node.type.lower()
+        if t == "linear":
+            #print("Creating Linear:", node.inFeatures, "->", node.outFeatures)
+            layers[node.id] = nn.Linear(node.inFeatures, node.outFeatures)
+
+        elif t == "relu":
+            layers[node.id] = nn.ReLU()
+
+        elif t == "dropout":
+            p = 0.5 if node.p is None else float(node.p)
+            layers[node.id] = nn.Dropout(p)
+
+        elif t == "layernorm":
+            norm_shape = node.normalizedShape or node.inFeatures
+            layers[node.id] = nn.LayerNorm(norm_shape)
+
+        elif t == "convtranspose1d": # t == "convtranspose"
+                layers[node.id] = nn.ConvTranspose1d(
+                    node.inChannels, node.outChannels,
+                    kernel_size=node.kernelSize or 3,
+                    stride=node.stride or 1,
+                    padding=node.padding or 0
+                )
+        elif t == "convtranspose2d":
+                layers[node.id] = nn.ConvTranspose2d(
+                    node.inChannels, node.outChannels,
+                    kernel_size=(node.kernelH or 3, node.kernelW or 3),
+                    stride=(node.strideH or 1, node.strideW or 1),
+                    padding=(node.padH or 0, node.padW or 0)
+                )
+        elif t == "convtranspose3d":
+                layers[node.id] = nn.ConvTranspose3d(
+                    node.inChannels, node.outChannels,
+                    kernel_size=(node.kernelD or 3, node.kernelH or 3, node.kernelW or 3),
+                    stride=(node.strideD or 1, node.strideH or 1, node.strideW or 1),
+                    padding=(node.padD or 0, node.padH or 0, node.padW or 0)
+                )
+
+        elif t == "conv1d":
+                print(node.inChannels, node.outChannels)
+                layers[node.id] = nn.Conv1d(
+                    node.inChannels, node.outChannels,
+                    kernel_size=node.kernelSize or 3,
+                    stride=node.stride or 1,
+                    padding=node.padding or 0
+                )
+        elif t == "conv2d":
+                layers[node.id] = nn.Conv2d(
+                    node.inChannels, node.outChannels,
+                    kernel_size=(node.kernelH or 3, node.kernelW or 3),
+                    stride=(node.strideH or 1, node.strideW or 1),
+                    padding=(node.padH or 0, node.padW or 0)
+                )
+        elif t == "conv3d":
+                layers[node.id] = nn.Conv3d(
+                    node.inChannels, node.outChannels,
+                    kernel_size=(node.kernelD or 3, node.kernelH or 3, node.kernelW or 3),
+                    stride=(node.strideD or 1, node.strideH or 1, node.strideW or 1),
+                    padding=(node.padD or 0, node.padH or 0, node.padW or 0)
+                )
+
+        elif t == "maxpool1d":
+            layers[node.id] = nn.MaxPool1d(node.kernel or 2, node.stride or 1)
+
+        elif t == "avgpool1d":
+            layers[node.id] = nn.AvgPool1d(node.kernel or 2, node.stride or 1)
+
+        elif t =="adaptiveavgpool1d":
+                layers[node.id] = nn.AdaptiveAvgPool1d(node.outputSize or 1) 
+
+        elif t =="adaptiveavgpool2d":
+                layers[node.id] = nn.AdaptiveAvgPool2d(node.outputSize or 1) 
+
+        elif t == "embedding":
+            layers[node.id] = nn.Embedding(
+                node.numEmbeddings or 16,
+                node.embeddingDim or 16
+            )
+
+        elif t == "concat":
+            layers[node.id] = None
+        
+        elif t == "softmax":
+            dim = node.softmaxDim if node.softmaxDim is not None else -1
+            layers[node.id] = nn.Softmax(dim = dim)
+
+        elif t == "matmul":
+            layers[node.id] = None
+        
+        elif t == "scale":
+            layers[node.id] = None
+
+        elif t == "mask":
+            layers[node.id] = None
+
+    """
+    def forward_once(z):
+        node_outputs = {}
+
+        if z.dim() == 4:
+            z = z.view(z.size(0), -1)
+
+        #if z.dim() == 2:
+        #    z = z.unsqueeze(2)
+
+        for node in sorted_nodes:
+            t = node.type.lower()
+            incoming = get_inputs_for_nodes(node.id, graph_edges, node_outputs)
+
+            if not incoming:
+                current = z
+            elif t == "concat":
+                current = torch.cat(incoming, dim=1)
+            else:
+                current = incoming[0]
+
+            layer = layers[node.id]
+
+            if t in ["conv1d", "convtranspose1d", "maxpool1d", "avgpool1d", "adaptiveavgpool1d"]:
+                if current.dim() == 2:
+                    current = current.unsqueeze(2)
+                elif current.dim() == 3 and current.shape[1] == 1:
+                    current = current.transpose(1, 2)
+
+                current = layer(current)
+            
+            elif t in ["linear", "layernorm", "relu", "dropout", "softmax"]:
+                #if current.dim() == 3 and t != "softmax":
+                #    current = current.squeeze(-1)
+                #print("INPUT SHAPE:", current.shape)
+                current = layer(current)
+                #print("OUTPUT SHAPE:", current.shape)
+
+            elif t == "embedding":
+                current = layer(current.long()).mean(dim=1)
+
+            elif t == "matmul":
+                a, b= incoming
+                current = torch.matmul(a, b.T)
+
+            elif t == "scale":
+                current = current / math.sqrt(current.shape[-1])
+
+            elif t == "mask":
+                scores = incoming[0]
+
+                T = scores.shape[-1]
+
+                mask = torch.triu(
+                    torch.ones(T, T, device=scores.device),
+                    diagonal=1
+                ) * (-1e9)
+  
+                current = scores + mask 
+
+            else:
+                raise ValueError(f"Unknown node type {node.type}")
+            node_outputs[node.id] = current
+
+        return node_outputs[sorted_nodes[-1].id]
+    """
+    
+    
+    params = []
+    for m in layers.values():
+        if m is not None:
+            params += list(m.parameters())
+    
+    optimizer = torch.optim.SGD(params, lr=lr)
+
+    loss_history = []
+
+    criterion = nn.CrossEntropyLoss()
+    
+    for epoch in range(num_epochs):
+        epoch_loss = 0
+        #print(f"Epoch {epoch+1}/{num_epochs}")
+        for images, labels in train_loader:
+            outputs = forward_once(images)
+            loss = criterion(outputs, labels)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            epoch_loss += loss.item()
+
+        epoch_loss /= len(train_loader)  
+        loss_history.append(epoch_loss)
+
+    for layer in layers.values():
+        if layer is not None:
+            layer.eval()
+
+    correct = 0
+    total = 0
+
+    """
+    with torch.no_grad():
+        images, labels = next(iter(train_loader))
+        outputs = forward_once(images)
+
+        _, predicted = torch.max(outputs, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+
+   
+    """
+    samples = []
+
+    max_samples = 20
+
+    with torch.no_grad():
+        for x, y in train_loader:
+            x = x.view(x.size(0), -1)
+            out = forward_once(x)
+
+            preds = torch.argmax(out, dim = 1)
+            correct += (preds == y).sum().item()
+            total += y.size(0)
+            
+            # Show small sample
+            for i in range(x.size(0)):
+                #if len(samples) >= max_samples:
+                #    break
+                
+                if preds[i] != y[i]:
+                    samples.append({
+                        "true": int(y[i]),
+                        "pred": int(preds[i]),
+                        "output": out[i].tolist(),
+                    })
+
+                if len(samples) >= max_samples:
+                    break
+
+    accuracy = correct / total if total > 0 else 0.0
+
+    clean_loss_history = []
+    for l in loss_history:
+        if math.isfinite(l):
+            clean_loss_history.append(l)
+        else:
+            clean_loss_history.append(None)
+
+    
+    plt.plot(clean_loss_history)
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("BlockBuild – Loss History")
+    plt.savefig("loss.png")
+    plt.close()
+
+    #print("After training.")
+
+    #print("FINAL MODEL:", {k: type(v).__name__ for k,v in layers.items()})
+
+    return {
+        "accuracy": accuracy,
+        "correct": correct,
+        "total": total,
+        #"output": out.tolist(),
+        "loss": clean_loss_history[-1],
+        "loss_history": clean_loss_history,
+        "samples": samples,
+    }
 
 
 @app.post("/run")
@@ -460,7 +847,7 @@ def run_single(data: dict):
     print("SORTED NODES:", [node.id for node in sorted_nodes])
 
     #z_input = x
-
+    """
     def forward_once(z):
         node_outputs = {}
 
@@ -539,10 +926,7 @@ def run_single(data: dict):
             node_outputs[node.id] = z
 
         return node_outputs[sorted_nodes[-1].id]
-
-
-
-        return z
+    """
     
 
     with torch.no_grad():
@@ -558,4 +942,53 @@ def run_single(data: dict):
 
     return {"output": output_list}
 
-    
+
+@app.post("/test_mnist")
+def test_mnist(max_samples: int = 20):
+
+    train_loader, test_loader = load_mnist()
+
+    for layer in layers.values():
+        if layer is not None:
+            layer.eval()
+
+    correct = 0
+    total = 0
+    samples = []
+
+    with torch.no_grad():
+        for x, y in test_loader:
+            x = x.view(x.size(0), -1)
+            out = forward_once(x)
+
+            preds = torch.argmax(out, dim = 1)
+            correct += (preds == y).sum().item()
+            total += y.size(0)
+            
+            # Show small sample
+            for i in range(x.size(0)):
+                #if len(samples) >= max_samples:
+                #    break
+                
+                if preds[i] != y[i]:
+                    samples.append({
+                        "true": int(y[i]),
+                        "pred": int(preds[i]),
+                        "output": out[i].tolist(),
+                    })
+
+
+            if len(samples) >= max_samples:
+                break
+
+    print("Before return", correct, "/", total)
+
+    accuracy = correct / total if total > 0 else 0.0
+
+    return {
+        "accuracy": accuracy,
+        "correct": correct,
+        "total": total,
+        "samples": samples
+    }
+
