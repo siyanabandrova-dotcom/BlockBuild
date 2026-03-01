@@ -18,7 +18,8 @@ function AddLayerButton({ label, options, onAddNode}){
                     border: "1px solid #080808ff",
                     borderRadius: "0px",
                     textAlign: "left",
-                    cursor: "pointer",/*
+                    cursor: "pointer",
+                    position: "relative",/*
                     padding: "10px",
                     background: "black", 
                     color: "white", 
@@ -38,14 +39,18 @@ function AddLayerButton({ label, options, onAddNode}){
                 <div
                     style={{
                         position: "absolute",
+                        //position: "relative",
                         background: "black",
                         border: "1px solid #ccc",
                         padding: "5px",
                         width: "150px",
-                        height: "80px",
+                        //height: "80px",
                         cursor: "pointer",
                         textAlign: "left",
-                        zIndex: 100
+                        zIndex: 100,
+                        position: "absolute",
+                        top: "100%",   // под бутона
+                        left: 0,
                     }}
                 >
                 {options.map((opt) => ( 

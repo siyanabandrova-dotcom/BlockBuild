@@ -5,4 +5,5 @@ pydantic
 numpy<2
 matplotlib
 torch==2.2.2
+torchvision
 

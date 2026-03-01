@@ -17,6 +17,11 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
+# Documetation
+from fastapi.responses import FileResponse
+import os
+
+
 app = FastAPI()
 
 app.add_middleware(
@@ -96,7 +101,9 @@ class GraphRequest(BaseModel):
     learningRate: Optional[float]=0.01
     batchSize: Optional[int] = 64
     training: Optional[List[TrainingSample]] = None
-
+    #noiseLevel: Optional[float] = 0.0
+    #datasetName: str
+    datasetName: Optional[str] = None
     class Config:
         extra = "allow"
 
@@ -105,6 +112,11 @@ class RunRequest(BaseModel):
 
 class TrainRequest(BaseModel):
     examples: list[list[str]] 
+
+class TestConfig(BaseModel):
+    noise_level: float = 0.0
+    max_samples: int = 20
+    datasetName: Optional[Literal["mnist", "fashion"]] =  "mnist"
 
 
 def topological_sort(nodes, edges):
@@ -153,19 +165,30 @@ sorted_nodes=[]
 layers={}
 
 
-def load_mnist(batch_size=64):
+def load_dataset(dataset_name: str, batch_size=64):
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,),(0.3081,))
     ])
-    train_ds = datasets.MNIST(
+
+    DATASETS = {
+        "mnist": datasets.MNIST,
+        "fashion": datasets.FashionMNIST,
+    }
+
+    if dataset_name not in DATASETS:
+        raise ValueError(f"Unknown dataset: {dataset_name}")
+    
+    dataset_class = DATASETS[dataset_name]
+
+    train_ds = dataset_class(
         root = "./data",
         train = True,
         download = True,
         transform = transform
     )
     
-    test_ds = datasets.MNIST(
+    test_ds = dataset_class(
         root = "./data",
         train = False,
         download = True,
@@ -179,14 +202,34 @@ def load_mnist(batch_size=64):
     return train_loader, test_loader
 
 
+def add_noise(x, noise_level):
+    if noise_level == 0:
+        return x
+    noise = noise_level * torch.randn_like(x)
+    x = x + noise
+    return torch.clamp(x, 0., 1.)
+
+def get_label_map(dataset_name: str):
+
+    if dataset_name == "fashion":
+        return{
+            0: "T-shirt/Top",
+            1: "Trouser",
+            2: "Pullover",
+            3: "Dress",
+            4: "Coat",
+            5: "Sandal",
+            6: "Shirt",
+            7: "Sneakers",
+            8: "Bag",
+            9: "Ankle boot",
+        }
+    else:
+        return None
+
+
 def forward_once(z):
         node_outputs = {}
-
-        if z.dim() == 4:
-            z = z.view(z.size(0), -1)
-
-        #if z.dim() == 2:
-        #    z = z.unsqueeze(2)
 
         for node in sorted_nodes:
             t = node.type.lower()
@@ -201,7 +244,14 @@ def forward_once(z):
 
             layer = layers[node.id]
 
-            if t in ["conv1d", "convtranspose1d", "maxpool1d", "avgpool1d", "adaptiveavgpool1d"]:
+            if t in ["conv2d", "convtranspose2d", "maxpool2d", "avgpool2d", "adaptiveavgpool2d"]:
+                if current.dim() != 4:
+                    raise ValueError(f"{t} expects 4D input [B,C,H,W], got {current.shape}")
+                current = layer(current)
+
+            elif t in ["conv1d", "convtranspose1d", "maxpool1d", "avgpool1d", "adaptiveavgpool1d"]:
+                if current.dim() == 4:
+                    current = current.view(current.size(0), -1)
                 if current.dim() == 2:
                     current = current.unsqueeze(2)
                 elif current.dim() == 3 and current.shape[1] == 1:
@@ -209,24 +259,35 @@ def forward_once(z):
 
                 current = layer(current)
             
-            elif t in ["linear", "layernorm", "relu", "dropout", "softmax"]:
+            elif t in ["linear", "layernorm"]:
+                if current.dim() == 4:
+                    current = current.view(current.size(0), -1)
                 #if current.dim() == 3 and t != "softmax":
                 #    current = current.squeeze(-1)
-                #print("INPUT SHAPE:", current.shape)
                 current = layer(current)
-                #print("OUTPUT SHAPE:", current.shape)
+
+            elif t in ["relu", "dropout", "softmax"]:
+                current = layer(current)
 
             elif t == "embedding":
+                if current.dim() == 4:
+                    current = current.view(current.size(0), -1)
                 current = layer(current.long()).mean(dim=1)
 
             elif t == "matmul":
+                if current.dim() == 4:
+                    current = current.view(current.size(0), -1)
                 a, b= incoming
                 current = torch.matmul(a, b.T)
 
             elif t == "scale":
+                if current.dim() == 4:
+                    current = current.view(z.size(0), -1)
                 current = current / math.sqrt(current.shape[-1])
 
             elif t == "mask":
+                if current.dim() == 4:
+                    current = current.view(current.size(0), -1)
                 scores = incoming[0]
 
                 T = scores.shape[-1]
@@ -243,9 +304,43 @@ def forward_once(z):
             node_outputs[node.id] = current
 
         return node_outputs[sorted_nodes[-1].id]
-    
+
+@app.get("/documentation")
+def get_documentation():
+    return FileResponse(
+        "src/BlockBuildDocumentationEnglish.pdf",
+        media_type="application/pdf",
+        filename="BlockBuildDocumentationEnglish.pdf"
+    )
+
+@app.get("/research")
+def get_research():
+    return FileResponse(
+        "src/BlockBuildResearch.pdf",
+        media_type="application/pdf",
+        filename="BlockBuildResearch.pdf",
+    )
+
+@app.get("/dataset3")
+def get_dataset3():
+
+    return FileResponse(
+        "src/dataset3.txt",
+        media_type="application/txt",
+        filename="dataset3.txt",
+    )
+
+
+@app.get("/dataset4")
+def get_dataset4():
+    return FileResponse(
+            "src/dataset4.txt",
+            media_type="application/txt",
+            filename="dataset4.txt",
+        )
+
 @app.post("/train")
-def train(graph: GraphRequest):
+def train_manual(graph: GraphRequest):
     global layers, sorted_nodes, graph_nodes, graph_edges
     graph_nodes = graph.nodes
     graph_edges = graph.edges
@@ -265,8 +360,6 @@ def train(graph: GraphRequest):
     except Exception as e:
         return {"error": f"Topological sort failed: {e}"}
     
-    #print("SORTED:", sorted_nodes)
-    #print("LAYERS:", layers.keys())
 
     layers={}
     for node in sorted_nodes:
@@ -308,7 +401,6 @@ def train(graph: GraphRequest):
                 )
 
         elif t == "conv1d":
-                print(node.inChannels, node.outChannels)
                 layers[node.id] = nn.Conv1d(
                     node.inChannels, node.outChannels,
                     kernel_size=node.kernelSize or 3,
@@ -333,8 +425,42 @@ def train(graph: GraphRequest):
         elif t == "maxpool1d":
             layers[node.id] = nn.MaxPool1d(node.kernel or 2, node.stride or 1)
 
+        elif t == "maxpool2d":
+            layers[node.id] = nn.MaxPool2d(
+                kernel_size=(node.kernelH or 2, node.kernelW or 2),
+                stride=(node.strideH or 2, node.strideW or 2)
+            )
+
+        elif t == "maxpool3d":
+            layers[node.id] = nn.MaxPool3d(
+                kernel_size=(
+                    node.kernelD or 2,
+                    node.kernelH or 2,
+                    node.kernelW or 2,
+                ),
+                stride=(
+                    node.strideD or 2,
+                    node.strideH or 2,
+                    node.strideW or 2,
+                )
+            )
+
         elif t == "avgpool1d":
             layers[node.id] = nn.AvgPool1d(node.kernel or 2, node.stride or 1)
+
+        elif t == "avgpool2d":
+            layers[node.id] = nn.AvgPool2d(
+                kernel_size=(
+                    node.kernelD or 2,
+                    node.kernelH or 2,
+                    node.kernelW or 2,
+                ),
+                stride=(
+                    node.strideD or 2,
+                    node.strideH or 2,
+                    node.strideW or 2,
+                )
+            )
 
         elif t =="adaptiveavgpool1d":
                 layers[node.id] = nn.AdaptiveAvgPool1d(node.outputSize or 1) 
@@ -363,111 +489,14 @@ def train(graph: GraphRequest):
 
         elif t == "mask":
             layers[node.id] = None
-
-    for node in sorted_nodes:
-        print("Node: ",node.id, node.type)
-
-    #print("Sorted nodes IDs:", [n.id for n in sorted_nodes])
-    #print("Layer keys:", list(layers.keys()))
-
-    def forward_once(z):
-        node_outputs = {}
-
-        if z.dim() == 3 and z.shape[1] == 1:
-            z = z.transpose(1, 2)
-        elif z.dim() == 2:
-            z = z.unsqueeze(2)
-
-        for node in sorted_nodes:
-            
-            t = node.type.lower()
-
-            incoming = get_inputs_for_nodes(node.id, graph.edges, node_outputs)
-
-            if not incoming:
-                z = x
-            elif t == "concat":
-                z = torch.cat(incoming, dim=1)
-                node_outputs[node.id] = z
-            else:
-                z = incoming[0]
-
-            if t == "concat":
-                node_outputs[node.id] = z
-                continue
-            
-            layer = layers[node.id]
-            #print("Node", node.id, node.type, "input shape:", z.shape)
-
-            if t in [
-                "conv1d", "convtranspose1d",
-                "maxpool1d", "avgpool1d", "adaptiveavgpool1d"
-            ]:
-                if z.dim() == 2:
-                    z = z.unsqueeze(2)
-                elif z.dim() == 3 and z.shape[1] == 1:
-                    z = z.transpose(1, 2)
-
-                z = layer(z)
-
-            elif t in ["linear", "layernorm", "relu", "dropout", "softmax"]:
-                if z.dim() == 3 and t != "softmax":
-                    z = z.squeeze(-1)
-
-                z = layer(z)
-
-            elif t == "embedding":
-                z = z.long()
-                z = layer(z)
-                z = z.mean(dim=1)
-
-            elif t == "matmul":
-                if len(incoming) != 2:
-                    raise ValueError("MatMul node must have exactly 2 inputs")
-                
-                a, b = incoming
-                if a.dim() == 1:
-                    a = a.unsqueeze(0)
-                if b.dim() == 1:
-                    b = b.unsqueeze(0)
-
-                z = torch.matmul(a, b.T)
-                node_outputs[node.id] = z
-                continue
-
-            elif t == "scale":
-                d_k = z.shape[-1]
-                z = z / math.sqrt(d_k)
-                node_outputs[node.id] = z
-                continue
-
-            elif t == "mask":
-                scores = incoming[0]
-
-                T = scores.shape[-1]
-
-                mask = torch.triu(
-                    torch.ones(T, T, device=scores.device),
-                    diagonal=1
-                ) * (-1e9)
-
-                scores = scores + mask
-                node_outputs[node.id] = scores
-
-            else:
-                raise ValueError(f"Unknown node type: {node.type} (node id: {node.id})")
-            
-            node_outputs[node.id] = z
-
-        return node_outputs[sorted_nodes[-1].id]
         
     params = []
     for m in layers.values():
         if m is not None:
             params += list(m.parameters())
 
-    optimizer = torch.optim.SGD(params, lr=lr)
-    #optimizer = torch.optim.Adam(params, lr=lr)
+    #optimizer = torch.optim.SGD(params, lr=lr)
+    optimizer = torch.optim.Adam(params, lr=lr)
 
 
     loss_history = []
@@ -491,6 +520,8 @@ def train(graph: GraphRequest):
     with torch.no_grad():
         out = forward_once(x)
 
+    out = torch.nan_to_num(out, nan=0.0, posinf=1e6, neginf=-1e6)
+
     clean_loss_history = []
     for l in loss_history:
         if math.isfinite(l):
@@ -506,9 +537,6 @@ def train(graph: GraphRequest):
     plt.savefig("loss.png")
     plt.close()
 
-    #print("FINAL MODEL:", {k: type(v).__name__ for k,v in layers.items()})
-
-    print("Return result.")
 
     return {
         "output": out.tolist(),
@@ -518,12 +546,13 @@ def train(graph: GraphRequest):
         "loss_history": clean_loss_history,
     }
 
-@app.post("/train_mnist")
-def train_mnist(graph: GraphRequest):
+@app.post("/train_dataset")
+def train_dataset(graph: GraphRequest):
     num_epochs = graph.epochs or 5
     lr = graph.learningRate or 0.001
     batch_size = graph.batchSize or 64
-    train_loader, test_loader = load_mnist(batch_size)
+    dataset_name = graph.datasetName or "mnist"
+    train_loader, test_loader = load_dataset(dataset_name, batch_size)
 
     global layers, sorted_nodes, graph_nodes, graph_edges
 
@@ -536,7 +565,6 @@ def train_mnist(graph: GraphRequest):
     for node in sorted_nodes:
         t=node.type.lower()
         if t == "linear":
-            #print("Creating Linear:", node.inFeatures, "->", node.outFeatures)
             layers[node.id] = nn.Linear(node.inFeatures, node.outFeatures)
 
         elif t == "relu":
@@ -573,7 +601,6 @@ def train_mnist(graph: GraphRequest):
                 )
 
         elif t == "conv1d":
-                print(node.inChannels, node.outChannels)
                 layers[node.id] = nn.Conv1d(
                     node.inChannels, node.outChannels,
                     kernel_size=node.kernelSize or 3,
@@ -598,8 +625,54 @@ def train_mnist(graph: GraphRequest):
         elif t == "maxpool1d":
             layers[node.id] = nn.MaxPool1d(node.kernel or 2, node.stride or 1)
 
+        elif t == "maxpool2d":
+            layers[node.id] = nn.MaxPool2d(
+                kernel_size=(node.kernelH or 2, node.kernelW or 2),
+                stride=(node.strideH or 2, node.strideW or 2)
+            )
+
+        elif t == "maxpool3d":
+            layers[node.id] = nn.MaxPool3d(
+                kernel_size=(
+                    node.kernelD or 2,
+                    node.kernelH or 2,
+                    node.kernelW or 2,
+                ),
+                stride=(
+                    node.strideD or 2,
+                    node.strideH or 2,
+                    node.strideW or 2,
+                )
+            )
+
         elif t == "avgpool1d":
             layers[node.id] = nn.AvgPool1d(node.kernel or 2, node.stride or 1)
+
+        elif t == "avgpool2d":
+            layers[node.id] = nn.AvgPool2d(
+                kernel_size=(
+                    node.kernelD or 2,
+                    node.kernelH or 2,
+                ),
+                stride=(
+                    node.strideD or 2,
+                    node.strideH or 2,
+                )
+            )
+
+        elif t == "avgpool3d":
+            layers[node.id] = nn.AvgPool3d(
+                kernel_size=(
+                    node.kernelD or 2,
+                    node.kernelH or 2,
+                    node.kernelW or 2,
+                ),
+                stride=(
+                    node.strideD or 2,
+                    node.strideH or 2,
+                    node.strideW or 2,
+                )
+            )
 
         elif t =="adaptiveavgpool1d":
                 layers[node.id] = nn.AdaptiveAvgPool1d(node.outputSize or 1) 
@@ -628,73 +701,6 @@ def train_mnist(graph: GraphRequest):
 
         elif t == "mask":
             layers[node.id] = None
-
-    """
-    def forward_once(z):
-        node_outputs = {}
-
-        if z.dim() == 4:
-            z = z.view(z.size(0), -1)
-
-        #if z.dim() == 2:
-        #    z = z.unsqueeze(2)
-
-        for node in sorted_nodes:
-            t = node.type.lower()
-            incoming = get_inputs_for_nodes(node.id, graph_edges, node_outputs)
-
-            if not incoming:
-                current = z
-            elif t == "concat":
-                current = torch.cat(incoming, dim=1)
-            else:
-                current = incoming[0]
-
-            layer = layers[node.id]
-
-            if t in ["conv1d", "convtranspose1d", "maxpool1d", "avgpool1d", "adaptiveavgpool1d"]:
-                if current.dim() == 2:
-                    current = current.unsqueeze(2)
-                elif current.dim() == 3 and current.shape[1] == 1:
-                    current = current.transpose(1, 2)
-
-                current = layer(current)
-            
-            elif t in ["linear", "layernorm", "relu", "dropout", "softmax"]:
-                #if current.dim() == 3 and t != "softmax":
-                #    current = current.squeeze(-1)
-                #print("INPUT SHAPE:", current.shape)
-                current = layer(current)
-                #print("OUTPUT SHAPE:", current.shape)
-
-            elif t == "embedding":
-                current = layer(current.long()).mean(dim=1)
-
-            elif t == "matmul":
-                a, b= incoming
-                current = torch.matmul(a, b.T)
-
-            elif t == "scale":
-                current = current / math.sqrt(current.shape[-1])
-
-            elif t == "mask":
-                scores = incoming[0]
-
-                T = scores.shape[-1]
-
-                mask = torch.triu(
-                    torch.ones(T, T, device=scores.device),
-                    diagonal=1
-                ) * (-1e9)
-  
-                current = scores + mask 
-
-            else:
-                raise ValueError(f"Unknown node type {node.type}")
-            node_outputs[node.id] = current
-
-        return node_outputs[sorted_nodes[-1].id]
-    """
     
     
     params = []
@@ -710,8 +716,10 @@ def train_mnist(graph: GraphRequest):
     
     for epoch in range(num_epochs):
         epoch_loss = 0
-        #print(f"Epoch {epoch+1}/{num_epochs}")
         for images, labels in train_loader:
+
+            #images = add_noise(images, config.noise_level)
+            
             outputs = forward_once(images)
             loss = criterion(outputs, labels)
 
@@ -724,6 +732,7 @@ def train_mnist(graph: GraphRequest):
         epoch_loss /= len(train_loader)  
         loss_history.append(epoch_loss)
 
+
     for layer in layers.values():
         if layer is not None:
             layer.eval()
@@ -731,24 +740,18 @@ def train_mnist(graph: GraphRequest):
     correct = 0
     total = 0
 
-    """
-    with torch.no_grad():
-        images, labels = next(iter(train_loader))
-        outputs = forward_once(images)
-
-        _, predicted = torch.max(outputs, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum().item()
-
-   
-    """
     samples = []
 
     max_samples = 20
 
+    label_map = None
+
+    if hasattr(train_loader.dataset, "classes"):
+        label_map = train_loader.dataset.classes
+
     with torch.no_grad():
         for x, y in train_loader:
-            x = x.view(x.size(0), -1)
+            #x = x.view(x.size(0), -1)
             out = forward_once(x)
 
             preds = torch.argmax(out, dim = 1)
@@ -761,9 +764,16 @@ def train_mnist(graph: GraphRequest):
                 #    break
                 
                 if preds[i] != y[i]:
+                    true_label = int(y[i])
+                    pred_label = int(preds[i])
+                    
+                    if label_map is not None:
+                        true_label = label_map[true_label]
+                        pred_label = label_map[pred_label]
+
                     samples.append({
-                        "true": int(y[i]),
-                        "pred": int(preds[i]),
+                        "true": true_label,
+                        "pred": pred_label,
                         "output": out[i].tolist(),
                     })
 
@@ -787,9 +797,6 @@ def train_mnist(graph: GraphRequest):
     plt.savefig("loss.png")
     plt.close()
 
-    #print("After training.")
-
-    #print("FINAL MODEL:", {k: type(v).__name__ for k,v in layers.items()})
 
     return {
         "accuracy": accuracy,
@@ -804,11 +811,6 @@ def train_mnist(graph: GraphRequest):
 
 @app.post("/run")
 def run_single(data: dict):
-    #print("RUN INPUT RAW:", data)
-    print("===== RAW DATA =====")
-    print(data)
-    print("TYPE:", type(data))
-    print("====================")
 
     global layers, sorted_nodes, graph_edges
     try: 
@@ -836,98 +838,12 @@ def run_single(data: dict):
             raise ValueError(f"Unsupported input format: {inp}")
         #x = torch.tensor(inp["data"], dtype=torch.float32).view(1, -1)
         x = torch.tensor(values, dtype=torch.float32).view(1, -1)
-        print("RUN INPUT TENSOR:", x, x.shape)
 
     except Exception:
         return {"error": "Invalid input format"}
 
     if x.dim() == 1:
         x = x.unsqueeze(0)
-
-    print("SORTED NODES:", [node.id for node in sorted_nodes])
-
-    #z_input = x
-    """
-    def forward_once(z):
-        node_outputs = {}
-
-        if z.dim() == 3 and z.shape[1] == 1:
-            z = z.transpose(1, 2)
-        elif z.dim() == 2:
-            z = z.unsqueeze(2)
-
-        for node in sorted_nodes:
-            t = node.type.lower()
-            incoming = get_inputs_for_nodes(node.id, graph_edges, node_outputs)
-
-            if not incoming:
-                z = x
-            elif t == "concat":
-                z = torch.cat(incoming, dim=1)
-                node_outputs[node.id] = z
-            else:
-                z = incoming[0]
-
-            if t == "concat":
-                node_outputs[node.id] = z
-                continue
-            
-            layer = layers[node.id]
-
-            print("Node", node.id, node.type, "input shape:", z.shape)
-
-            if t in [
-                "conv1d", "convtranspose1d",
-                "maxpool1d", "avgpool1d", "adaptiveavgpool1d"
-            ]:
-                if z.dim() == 2:
-                    z = z.unsqueeze(2)
-                elif z.dim() == 3 and z.shape[1] == 1:
-                    z = z.transpose(1, 2)
-
-                z = layer(z)
-
-            elif t in ["linear", "layernorm", "relu", "dropout", "softmax"]:
-                if z.dim() == 3 and t != "softmax":
-                    z = z.squeeze(-1)
-
-                z = layer(z)
-
-            elif t == "embedding":
-                z = z.long()
-                z = layer(z)
-                z = z.mean(dim=1)
-
-
-            elif t == "matmul":
-                if len(incoming) != 2:
-                    raise ValueError("MatMul node must have exactly 2 inputs")
-                
-                a, b = incoming
-                if a.dim() == 1:
-                    a = a.unsqueeze(0)
-                if b.dim() == 1:
-                    b = b.unsqueeze(0)
-
-                z = torch.matmul(a, b.T)
-                node_outputs[node.id] = z
-                continue
-
-            elif t == "scale":
-                d_k = z.shape[-1]
-                z = z / math.sqrt(d_k)
-                node_outputs[node.id] = z
-                continue
-
-
-            else:
-                raise ValueError(f"Unknown node type: {node.type} (node id: {node.id})")
-         
-            node_outputs[node.id] = z
-
-        return node_outputs[sorted_nodes[-1].id]
-    """
-    
 
     with torch.no_grad():
         out = forward_once(x)
@@ -937,16 +853,14 @@ def run_single(data: dict):
     #output_list = out.squeeze().item()
     output_list = out.squeeze().cpu().numpy().tolist()
 
-    #print("RUN OUTPUT RAW:", out)
-    #print("TYPE:", type(out))
 
     return {"output": output_list}
 
 
-@app.post("/test_mnist")
-def test_mnist(max_samples: int = 20):
+@app.post("/test_dataset")
+def test_dataset(config: TestConfig):
 
-    train_loader, test_loader = load_mnist()
+    train_loader, test_loader = load_dataset(config.datasetName, config.max_samples)
 
     for layer in layers.values():
         if layer is not None:
@@ -956,9 +870,16 @@ def test_mnist(max_samples: int = 20):
     total = 0
     samples = []
 
+    label_map = None
+    if hasattr(train_loader.dataset, "classes"):
+        label_map = train_loader.dataset.classes
+
     with torch.no_grad():
         for x, y in test_loader:
-            x = x.view(x.size(0), -1)
+            #x = x.view(x.size(0), -1)
+
+            x = add_noise(x, config.noise_level)
+
             out = forward_once(x)
 
             preds = torch.argmax(out, dim = 1)
@@ -970,18 +891,29 @@ def test_mnist(max_samples: int = 20):
                 #if len(samples) >= max_samples:
                 #    break
                 
+
                 if preds[i] != y[i]:
+                    true_label = int(y[i])
+                    pred_label = int(preds[i])
+                    
+                    if label_map is not None:
+                        true_label = label_map[true_label]
+                        pred_label = label_map[pred_label]
+
                     samples.append({
-                        "true": int(y[i]),
-                        "pred": int(preds[i]),
+                        "true": true_label,
+                        "pred": pred_label,
                         "output": out[i].tolist(),
                     })
 
+                if len(samples) >= config.max_samples:
+                    break
 
-            if len(samples) >= max_samples:
+
+
+            if len(samples) >= config.max_samples:
                 break
 
-    print("Before return", correct, "/", total)
 
     accuracy = correct / total if total > 0 else 0.0
 

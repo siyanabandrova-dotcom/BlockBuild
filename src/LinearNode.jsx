@@ -31,13 +31,14 @@ function LinearNode({ data, id, setNodes }) {
         position: 'relative',
       }}
     >
+      <strong> Linear </strong>
       <Handle
         type="target"
         position={Position.Top}
         id="in"
         style={{ background: 'black' }}
       />
-      <h4 style={{ margin: 0 }}>{data.label}</h4>
+      {/*<h4 style={{ margin: 0 }}>{data.label}</h4>*/}
       <div>
         <label>In: </label>
         <input

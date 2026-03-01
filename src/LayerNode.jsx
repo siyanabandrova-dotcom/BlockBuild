@@ -1,10 +1,13 @@
 import React from "react";
 import { Handle, Position } from "reactflow";
 
-export default function LayerNode({ id, data, setNodes }) {
+export default function LayerNode({ id, data, type, setNodes }) {
     console.log("LayerNode render", { id, data});
-    const { type } = data;
+    console.log("ADDING NODE TYPE:", type);
+    //const { type } = data;
     const params = data;
+
+    const layerType = data?.type;
     
     const outputSize = data.outputSize
     console.log("LayerNode render", { id, data, outputSize});
@@ -29,20 +32,40 @@ export default function LayerNode({ id, data, setNodes }) {
     return (
         <div
             style={{
+                /*
                 padding: "10px",
                 background: "white",
-                borderRadius: "8px",
-                border: "1px solid black",
+                borderRadius: "0px",
+                //border: "none",
+                //outline: "none",
+                //boxShadow: "none",
                 minWidth: "180px",
                 textAlign: "center",
+
+                borderRadius: "12px",
+                border: "1px solid #222",
+                //boxShadow: "0 4px 10px rgba(0,0,0,0.1)",*/
+
+                padding: 5,
+                border: '1px solid black',
+                borderRadius: 3,
+                backgroundColor: 'white',
+                minWidth: 100,
+                minHeight: 40,
+                boxShadow: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                position: 'relative',
+                //position: 'flex',
             }}
         >
             <strong style={{ textTransform: "uppercase" }}>
-                {type}
+                {layerType}
             </strong>
 
             {/* Conv */}
-            {["conv1d"].includes(type) && (
+            {["conv1d"].includes(layerType) && (
                 <>
                     
                     <div>
@@ -84,12 +107,12 @@ export default function LayerNode({ id, data, setNodes }) {
                     </div>
                 </>
             )}
-            {["conv2d"].includes(type) && (
+            {["conv2d"].includes(layerType) && (
                 <>
                     <div>
                         <label>In Channels: </label>
                         <input
-                            value={params.in || ""}
+                            value={params.inChannels || ""}
                             onChange={(e) => handleChange("inChannels", e.target.value)}
                         />
                     </div>
@@ -97,7 +120,7 @@ export default function LayerNode({ id, data, setNodes }) {
                     <div>
                         <label>Out Channels: </label>
                         <input
-                            value={params.out || ""}
+                            value={params.outChannels || ""}
                             onChange={(e) => handleChange("outChannels", e.target.value)}
                         />
                     </div>
@@ -140,7 +163,7 @@ export default function LayerNode({ id, data, setNodes }) {
                 </>
             )}
 
-            {["conv3d"].includes(type) && (
+            {["conv3d"].includes(layerType) && (
                 <>
                     <div>
                         <label>In Channels: </label>
@@ -212,7 +235,7 @@ export default function LayerNode({ id, data, setNodes }) {
             )}
 
             {/* AvgPool 1D */}
-            {["avgpool1d"].includes(type) && (
+            {["avgpool1d"].includes(layerType) && (
                 <>
                     <div>
                         <label>Kernel: </label>
@@ -233,7 +256,7 @@ export default function LayerNode({ id, data, setNodes }) {
             )}
 
             {/* AvgPool 2D */}
-            {["avgpool2d"].includes(type) && (
+            {["avgpool2d"].includes(layerType) && (
                 <>
                     <div>
                         <label>KH: </label>
@@ -276,7 +299,7 @@ export default function LayerNode({ id, data, setNodes }) {
             )}
 
             {/* AvgPool 3D */}
-            {["avgpool3d"].includes(type) && (
+            {["avgpool3d"].includes(layerType) && (
                 <>
                     <label>KD: </label>
                     <input
@@ -329,7 +352,7 @@ export default function LayerNode({ id, data, setNodes }) {
             )}
 
             {/*AdaptiveAvgPool*/}
-            {["adaptiveavgpool1d"].includes(type)  && (
+            {["adaptiveavgpool1d"].includes(layerType)  && (
                 <div>
                     <label>Output Size: </label>
                     <input
@@ -340,7 +363,7 @@ export default function LayerNode({ id, data, setNodes }) {
                     />
                 </div>
             )}
-            {["adaptiveavgpool2d"].includes(type) && (
+            {["adaptiveavgpool2d"].includes(layerType) && (
                 <div>
                 <label>Output H: </label>
                 <input
@@ -360,7 +383,7 @@ export default function LayerNode({ id, data, setNodes }) {
             )}
 
             {/* ConvTranspose Layer */}
-            {["convtranspose1d"].includes(type) && (
+            {["convtranspose1d"].includes(layerType) && (
                 <>
                     <div>
                     <label> In Channels: </label>
@@ -406,7 +429,7 @@ export default function LayerNode({ id, data, setNodes }) {
                 </>
             )}
 
-            {["convtranspose2d"].includes(type) && (
+            {["convtranspose2d"].includes(layerType) && (
                 <>
                 <div>
                 <label> In Channels: </label>
@@ -461,7 +484,7 @@ export default function LayerNode({ id, data, setNodes }) {
             )}
 
             {/* MaxPool */}
-            {["maxpool1d"].includes(type) && (
+            {["maxpool1d"].includes(layerType) && (
                 <>
                 <div>
                 <label>Kernel: </label>
@@ -484,7 +507,7 @@ export default function LayerNode({ id, data, setNodes }) {
                 </>
                 
             )}
-            {["maxpool2d"].includes(type) && (
+            {["maxpool2d"].includes(layerType) && (
                 <>
                 <div>
                 <label>KH: </label>
@@ -521,7 +544,7 @@ export default function LayerNode({ id, data, setNodes }) {
                 </>
             )}
 
-            {["maxpool3d"].includes(type) && (
+            {["maxpool3d"].includes(layerType) && (
                 <>
                 <div>
                 <label>KD: </label>

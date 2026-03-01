@@ -11,3 +11,28 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: linear-gradient(135deg, #2999c9, #316475, #21414f);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  /*overflow: hidden;   /* OVERLAP */
+}
