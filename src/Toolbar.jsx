@@ -25,6 +25,8 @@ const Toolbar = () =>{
         cursor: "pointer",
         color: "white",
         fontSize: 16,
+        position: "relative",
+        top: "100%",  
     };
 
     return(
@@ -76,7 +78,7 @@ const Toolbar = () =>{
             onMouseLeave={(e) =>
                 (e.target.style.background = "transparent")
             }
-            onClick={() => window.open("http://localhost:8000/documentation", "_blank")}
+            onClick={() => window.open("https://blockbuild-ai-u4d8.onrender.com/documentation", "_blank")}
         >
             Documentation
         </button>
@@ -116,7 +118,7 @@ const Toolbar = () =>{
             }}>
                 <div style={dropdownItemStyle}
                     onClick={() => {
-                    window.open("http://localhost:8000/dataset3", "_blank");
+                    window.open("https://blockbuild-ai-u4d8.onrender.com/dataset3", "_blank");
                     setOpen(false);
                     }}>
                     Forex Prediction
@@ -124,7 +126,7 @@ const Toolbar = () =>{
 
                 <div style={dropdownItemStyle}
                     onClick={() => {
-                    window.open("http://localhost:8000/dataset4", "_blank");
+                    window.open("https://blockbuild-ai-u4d8.onrender.com/dataset4", "_blank");
                     setOpen(false);
                     }}>
                     Housing Prices Prediction
@@ -141,7 +143,7 @@ const Toolbar = () =>{
             onMouseLeave={(e) =>
                 (e.target.style.background = "transparent")
             }
-            onClick={() => window.open("http://localhost:8000/research", "_blank")}
+            onClick={() => window.open("https://blockbuild-ai-u4d8.onrender.com/research", "_blank")}
         >
             Research for Forex
         </button>

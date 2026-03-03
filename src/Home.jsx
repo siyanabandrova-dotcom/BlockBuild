@@ -108,6 +108,7 @@ export default function Home(){
             style={{
                 display: "flex",
                 alignItems: "center",
+                justifyContent: "center",
                 gap: 25,
                 marginBottom: 40,
                 flexWrap: "wrap"
@@ -118,7 +119,8 @@ export default function Home(){
                 fontSize: 22,
                 maxWidth: 600,
                 opacity: 0.9,
-                margin: 0
+                margin: 0,
+                alignItems: "center",
                 }}
             >
                 Create AI models. Train them instantly. Experiment freely.

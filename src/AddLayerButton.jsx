@@ -47,7 +47,8 @@ function AddLayerButton({ label, options, onAddNode}){
                         //height: "80px",
                         cursor: "pointer",
                         textAlign: "left",
-                        zIndex: 100,
+                        //zIndex: 100,
+                        zIndex: 9999, 
                         position: "absolute",
                         top: "100%",   // под бутона
                         left: 0,

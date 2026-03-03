@@ -232,13 +232,13 @@ const loadFashionMnistPreset = () => {
     {
       id: "2",
       type: "relu",
-      position: { x: 100, y: 200 },
+      position: { x: 100, y: 300 },
       data: {}
     },
     {
       id: "3",
       type: "layer",
-      position: { x: 100, y: 300 },
+      position: { x: 100, y: 400 },
       data: {
         type: "conv2d",
         inChannels: 32,
@@ -254,13 +254,13 @@ const loadFashionMnistPreset = () => {
     {
       id: "4",
       type: "relu",
-      position: { x: 100, y: 400 },
+      position: { x: 100, y: 600 },
       data: {}
     },
     {
       id: "5",
       type: "layer",
-      position: { x: 100, y: 500 },
+      position: { x: 100, y: 700 },
       data: {
         type: "maxpool2d",
         kernelH: 2,
@@ -272,7 +272,7 @@ const loadFashionMnistPreset = () => {
     {
       id: "6",
       type: "layer",
-      position: { x: 100, y: 600 },
+      position: { x: 100, y: 800 },
       data: {
         type: "conv2d",
         inChannels: 64,
@@ -288,13 +288,13 @@ const loadFashionMnistPreset = () => {
     {
       id: "7",
       type: "relu",
-      position: { x: 100, y: 700 },
+      position: { x: 100, y: 1000 },
       data: {}
     },
     {
       id: "8",
       type: "layer",
-      position: { x: 100, y: 800 },
+      position: { x: 100, y: 1100 },
       data: {
         type: "maxpool2d",
         kernelH: 2,
@@ -306,7 +306,7 @@ const loadFashionMnistPreset = () => {
     {
       id: "9",
       type: "linear",
-      position: { x: 100, y: 900 },
+      position: { x: 100, y: 1200 },
       data: {
         inFeatures: 6272,
         outFeatures: 128
@@ -315,7 +315,7 @@ const loadFashionMnistPreset = () => {
     {
       id: "10",
       type: "linear",
-      position: { x: 100, y: 1000 },
+      position: { x: 100, y: 1300 },
       data: {
         inFeatures: 128,
         outFeatures: 10
@@ -1127,10 +1127,14 @@ useEffect(() => {
           borderRadius: "8px",
           border: "0px solid black",
           minWidth: "180px",
-          minHeigth: "40px",
+          minHeigth: "100px",
+
+          zIndex: 10000, 
 
           overflowX: "auto",
-          overflowY: "hidden",
+          overflowY: "visible",
+
+          //flexWrap: "wrap",
         }}>
         <button onClick={handleAddLinear}>➕ Add Linear</button>
         <button onClick={handleAddReLU}>➕ Add ReLU</button>
@@ -1204,13 +1208,14 @@ useEffect(() => {
             //background: "rgba(255,255,255,0.15)",
             //background: "rgba(255,255,255,0.2)",
             //background: "rgba(255,255,255,0.3)",
-            background: "rgba(0,212,255,0.6)",
+            //background: "rgba(6, 38, 135, 0.6)",
+            background: "#668fb7",
             //background: "rgba(69, 232, 238, 0.75)",
             color: "white",
             border: "1px solid #333",
             borderRadius: 8,
             zIndex: 2000,
-            minHeight: "200px",
+            minHeigth: "200px",
           }}>
 
           <h3> Input Source</h3>
@@ -1440,6 +1445,8 @@ useEffect(() => {
       </div>
 
       {/* Canvas */}
+      <div style={{ width: "100%", height: "100%", paddingTop: 70 }}>
+  
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -1453,7 +1460,7 @@ useEffect(() => {
         {/*<Background />
         <Controls />*/}
       </ReactFlow>
+      </div>
     </div>
   )
 }
-
