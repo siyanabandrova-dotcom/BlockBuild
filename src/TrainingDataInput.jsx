@@ -46,7 +46,7 @@ export default function TrainingDataInput({onDataReady}){
                 <textarea
                     value={inputStr}
                     onChange={(e) => setInputStr(e.target.value)}
-                    rows={4}
+                    rows={2}
                     style={{ width: "100%" }}
                     placeholder="Enter input samples"
                 />
@@ -57,7 +57,7 @@ export default function TrainingDataInput({onDataReady}){
                 <textarea
                     value={outputStr}
                     onChange={(e) => setOutputStr(e.target.value)}
-                    rows={4}
+                    rows={2}
                     style={{ width: "100%" }}
                     placeholder="Enter output samples"
                 />

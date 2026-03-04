@@ -1115,10 +1115,11 @@ useEffect(() => {
   };
 
   return (
-    <div style={{ width: "100vw", height: "100vh", overflow: "hidden", background: "linear-gradient(160deg, #d8eef7, #c7e6f4, #bfe0f0)"}}>
+    <div style={{ width: "100vw", height: "100vh", background: "linear-gradient(160deg, #d8eef7, #c7e6f4, #bfe0f0)"}}>
       {/* Lenta */}
       <div 
         style={{
+          position: "fixed",
           padding: "10px",
           background: "rgb(0, 0, 0)", 
           color: "white", 
@@ -1131,8 +1132,8 @@ useEffect(() => {
 
           zIndex: 10000, 
 
-          overflowX: "auto",
-          overflowY: "visible",
+          //overflowX: "auto",
+          //overflowY: "visible",
 
           //flexWrap: "wrap",
         }}>
@@ -1196,10 +1197,13 @@ useEffect(() => {
         <button onClick={() => handleAddMaskNode("mask")}>
           ➕Mask
         </button>
+      </div>
+      
 
         {/* Training and Testing*/}
-        <div style={{
-            position: "absolute",
+      <div style={{
+            position: "fixed",
+            //position: "absolute",
             top: 90,
             left: 10,
             width: 300,
@@ -1215,8 +1219,33 @@ useEffect(() => {
             border: "1px solid #333",
             borderRadius: 8,
             zIndex: 2000,
-            minHeigth: "200px",
+            minHeight: "200px",
           }}>
+          
+          <h4> Training Parameters: </h4>
+
+          <label style={{ display: "flex", alignItems: "center", gap: 5, color: "white"}}>
+          Epochs: 
+          <input
+            type="number"
+            min={1}
+            max={1000}
+            value={epochs}
+            onChange={(e) => setEpochs(Number(e.target.value))}
+            style={{width: 70}}
+            />
+        </label>
+
+        <label style={{ display: "flex", alignItems: "center", gap: 5, color: "white"}}>
+          Learning rate: 
+          <input
+            type="number"
+            max={100}
+            value={learningRate}
+            onChange={(e) => setLearningRate(Number(e.target.value))}
+            style={{width: 70}}
+            />
+        </label>
 
           <h3> Input Source</h3>
           <label>
@@ -1316,30 +1345,8 @@ useEffect(() => {
         )}
 
           
-        </div>
-
-        <label style={{ display: "flex", alignItems: "center", gap: 5, color: "white"}}>
-          Epochs: 
-          <input
-            type="number"
-            min={1}
-            max={1000}
-            value={epochs}
-            onChange={(e) => setEpochs(Number(e.target.value))}
-            style={{width: 70}}
-            />
-        </label>
-
-        <label style={{ display: "flex", alignItems: "center", gap: 5, color: "white"}}>
-          Learning rate: 
-          <input
-            type="number"
-            max={100}
-            value={learningRate}
-            onChange={(e) => setLearningRate(Number(e.target.value))}
-            style={{width: 70}}
-            />
-        </label>
+      </div>
+      <div>
 
 
         {consoleOutput.length>0 && (
