@@ -310,7 +310,7 @@ from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 BASE_DIR = Path(__file__).resolve().parent
 
-app.mount("/src", StaticFiles(directory=BASE_DIR / "src"), name="src")
+app.mount("/public", StaticFiles(directory=BASE_DIR / "public"), name="public")
 
 @app.post("/train")
 def train_manual(graph: GraphRequest):
