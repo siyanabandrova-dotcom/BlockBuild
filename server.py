@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 
 # Documetation
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 import os
 
 
@@ -305,39 +306,19 @@ def forward_once(z):
 
         return node_outputs[sorted_nodes[-1].id]
 
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+BASE_DIR = Path(__file__).resolve().parent
+
+app.mount("/src", StaticFiles(directory=BASE_DIR / "src"), name="src")
+
 @app.get("/documentation")
-def get_documentation():
-    return FileResponse(
-        "src/BlockBuildDocumentationEnglish.pdf",
-        media_type="application/pdf",
-        filename="BlockBuildDocumentationEnglish.pdf"
-    )
 
 @app.get("/research")
-def get_research():
-    return FileResponse(
-        "src/BlockBuildResearch.pdf",
-        media_type="application/pdf",
-        filename="BlockBuildResearch.pdf",
-    )
 
 @app.get("/dataset3")
-def get_dataset3():
-
-    return FileResponse(
-        "src/dataset3.txt",
-        media_type="application/txt",
-        filename="dataset3.txt",
-    )
-
 
 @app.get("/dataset4")
-def get_dataset4():
-    return FileResponse(
-            "src/dataset4.txt",
-            media_type="application/txt",
-            filename="dataset4.txt",
-        )
 
 @app.post("/train")
 def train_manual(graph: GraphRequest):
