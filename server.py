@@ -312,14 +312,6 @@ BASE_DIR = Path(__file__).resolve().parent
 
 app.mount("/src", StaticFiles(directory=BASE_DIR / "src"), name="src")
 
-@app.get("/src/documentation")
-
-@app.get("/src/research")
-
-@app.get("/src/dataset3")
-
-@app.get("/src/dataset4")
-
 @app.post("/train")
 def train_manual(graph: GraphRequest):
     global layers, sorted_nodes, graph_nodes, graph_edges
