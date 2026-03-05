@@ -9,6 +9,10 @@ const Toolbar = () =>{
 
     if (location.pathname === "/workspace") return null;
 
+    const openFile = (file) => {
+        window.open(process.env.PUBLIC_URL + "/" + file, "_blank");
+    };
+
     const buttonStyle = {
         background: "transparent",
         border: "none",
@@ -78,7 +82,8 @@ const Toolbar = () =>{
             onMouseLeave={(e) =>
                 (e.target.style.background = "transparent")
             }
-            onClick={() => window.open("/BlockBuildDocumentationEnglish.pdf", "_blank")}
+            //onClick={() => window.open("/BlockBuildDocumentationEnglish.pdf", "_blank")}
+            onClick={() => openFile("BlockBuildDocumentationEnglish.pdf")}
         >
             Documentation
         </button>
@@ -118,7 +123,8 @@ const Toolbar = () =>{
             }}>
                 <div style={dropdownItemStyle}
                     onClick={() => {
-                    window.open("/dataset3.txt", "_blank");
+                    //window.open("/dataset3.txt", "_blank")
+                    openFile("dataset3.txt");
                     setOpen(false);
                     }}>
                     Forex Prediction
@@ -126,7 +132,7 @@ const Toolbar = () =>{
 
                 <div style={dropdownItemStyle}
                     onClick={() => {
-                    window.open("/dataset4.txt", "_blank");
+                    openFile("dataset4.txt");
                     setOpen(false);
                     }}>
                     Housing Prices Prediction
@@ -143,7 +149,7 @@ const Toolbar = () =>{
             onMouseLeave={(e) =>
                 (e.target.style.background = "transparent")
             }
-            onClick={() => window.open("/BlockBuildResearch.pdf", "_blank")}
+            onClick={() => openFile("BlockBuildResearch.pdf")}
         >
             Research for Forex
         </button>
