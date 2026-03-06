@@ -241,7 +241,7 @@ def forward_once(z):
             elif t == "concat":
                 current = torch.cat(incoming, dim=1)
             else:
-                current = incoming[0]
+                current = incoming[0].clone()
 
             layer = layers[node.id]
 
@@ -252,7 +252,7 @@ def forward_once(z):
 
             elif t in ["conv1d", "convtranspose1d", "maxpool1d", "avgpool1d", "adaptiveavgpool1d"]:
                 if current.dim() == 4:
-                    current = current.view(current.size(0), -1)
+                    current = current.reshape(current.size(0), -1)
                 if current.dim() == 2:
                     current = current.unsqueeze(2)
                 elif current.dim() == 3 and current.shape[1] == 1:
@@ -421,8 +421,21 @@ def train_manual(graph: GraphRequest):
         elif t == "avgpool1d":
             layers[node.id] = nn.AvgPool1d(node.kernel or 2, node.stride or 1)
 
+
         elif t == "avgpool2d":
             layers[node.id] = nn.AvgPool2d(
+                kernel_size=(
+                    node.kernelH or 2,
+                    node.kernelW or 2,
+                ),
+                stride=(
+                    node.strideH or 2,
+                    node.strideW or 2,
+                )
+            )
+
+        elif t == "avgpool3d":
+            layers[node.id] = nn.AvgPool3d(
                 kernel_size=(
                     node.kernelD or 2,
                     node.kernelH or 2,
@@ -624,12 +637,12 @@ def train_dataset(graph: GraphRequest):
         elif t == "avgpool2d":
             layers[node.id] = nn.AvgPool2d(
                 kernel_size=(
-                    node.kernelD or 2,
                     node.kernelH or 2,
+                    node.kernelW or 2,
                 ),
                 stride=(
-                    node.strideD or 2,
                     node.strideH or 2,
+                    node.strideW or 2,
                 )
             )
 

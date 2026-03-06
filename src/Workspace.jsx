@@ -976,7 +976,7 @@ useEffect(() => {
           //noiseLevel: noiseLevel,
         }
         // http://localhost:8000
-        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/train_dataset" /*"http://localhost:8000/train_dataset"*/, {
+        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/train_dataset"/* "http://localhost:8000/train_dataset"*/, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify(payload)
