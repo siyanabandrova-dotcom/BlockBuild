@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef, useEffectEvent } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import ReactFlow, {
   addEdge,
   applyNodeChanges,
@@ -14,6 +14,11 @@ import LayerNorm from './LayerNorm.jsx';
 import BatchNorm from "./BatchNorm.jsx";
 import AddBatchNormButton from "./AddBatchNormButton.jsx";
 import Embedding from './Embedding.jsx';
+import ConvNode from "./Conv.jsx";
+import ConvTransposeNode from "./ConvTranspose.jsx";
+import AvgPool from "./AvgPool.jsx";
+import MaxPool from './MaxPool.jsx';
+import AdaptiveAvgPool from "./AdaptiveAvgPool.jsx";
 import AddLayerButton from "./AddLayerButton.jsx";
 import LayerNode from "./LayerNode.jsx";
 import TrainingDataInput from "./TrainingDataInput.jsx";
@@ -23,7 +28,6 @@ import Softmax from "./Softmax.jsx";
 import MatMulNode from "./MatMulNode.jsx";
 import ScaleNode from "./ScaleNode.jsx";
 import MaskNode from "./MaskNode.jsx";
-import UINode from "./UINode.jsx";
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
 
@@ -57,15 +61,6 @@ export default function Workspace() {
   const [dataset, setDataset] = useState("mnist");
   const [open, setOpen] = useState(null);
 
-
-  const [showPlot, setShowPlot] = useState(false);
-  const [plotUrl, setPlotUrl] = useState("");
-  const [position, setPosition] = useState({ x: 100, y: 100 });
-  const [dragging, setDragging] = useState(false);
-  //const [epoch, setEpoch] = useState(0);
-  //const [jobId, setJobId] = useState(null);
-  //const [loss, setLoss] = useState(null);
-  //const [accuracy, setAccuracy] = useState(null);
   
   const location = useLocation();
   const preset = location.state?.preset;
@@ -76,21 +71,35 @@ export default function Workspace() {
     dropout: (props) => <Dropout {...props} setNodes={setNodes} />,
     layernorm: (props) => <LayerNorm {...props} setNodes={setNodes} />,
     batchnorm: (props) => <BatchNorm {...props} setNodes={setNodes} />,
-    //batchnorm2d: (props) => <BatchNorm {...props} setNodes={setNodes} />,
     embedding: (props) => <Embedding {...props} setNodes={setNodes} />,
-    //adaptiveavgpool1d: (props) => <AdaptiveAvgPool {...props} setNodes={setNodes} />,
-    //adaptiveavgpool2d: (props) => <AdaptiveAvgPool {...props} setNodes={setNodes} />,
-    //adaptiveavgpool3d: (props) => <AdaptiveAvgPool {...props} setNodes={setNodes} />,
+    //conv: (props) => <ConvNode {...props} setNodes={setNodes} />,
+    //conv1d: (props) => <ConvNode {...props} setNodes={setNodes} />,
+    //conv2d: (props) => <ConvNode {...props} setNodes={setNodes} />,
+    //conv3d: (props) => <ConvNode {...props} setNodes={setNodes} />,
+    //convtranspose: (props) => <ConvTransposeNode {...props} setNodes={setNodes}/>,
+    //convtranspose1d: (props) => <ConvTransposeNode {...props} setNodes={setNodes}/>,
+    //convtranspose2d: (props) => <ConvTransposeNode {...props} setNodes={setNodes}/>,
+    //avgpool: (props) => <AvgPool {...props} setNodes={setNodes} />,
+    //avgpool1d: (props) => <AvgPool {...props} setNodes={setNodes} />,
+    //avgpool2d: (props) => <AvgPool {...props} setNodes={setNodes} />,
+    //avgpool3d: (props) => <AvgPool {...props} setNodes={setNodes} />,
+   // maxpool: (props) => <MaxPool {...props} setNodes={setNodes} />,
+    //maxpool1d: (props) => <MaxPool {...props} setNodes={setNodes} />,
+    //maxpool2d: (props) => <MaxPool {...props} setNodes={setNodes} />,
+    //maxpool3d: (props) => <MaxPool {...props} setNodes={setNodes} />,
+    //adaptiveavgpool: (props) => <AdaptiveAvgPool {...props} setNodes={setNodes} />,
+    adaptiveavgpool1d: (props) => <AdaptiveAvgPool {...props} setNodes={setNodes} />,
+    adaptiveavgpool2d: (props) => <AdaptiveAvgPool {...props} setNodes={setNodes} />,
+    adaptiveavgpool3d: (props) => <AdaptiveAvgPool {...props} setNodes={setNodes} />,
     layer: (props) => <LayerNode {...props} setNodes={setNodes} />,
     concat:(props) => <ConcatNode {...props} setNodes={setNodes} />,
     softmax: (props) => <Softmax {...props} setNodes={setNodes} />,
     matmul: (props) => <MatMulNode {...props} setNodes={setNodes}/>,
     scale: (props) => <ScaleNode {...props} setNodes={setNodes}/>,
     mask: (props) => <MaskNode {...props} setNodes={setNodes}/>,
-    ui: UINode, 
   }), [setNodes]);
 
-  const buttonStyle = {
+const buttonStyle = {
   background: "rgba(255,255,255,0.08)",
   border: "1px solid rgba(255,255,255,0.2)",
   color: "white",
@@ -102,23 +111,9 @@ export default function Workspace() {
   backdropFilter: "blur(4px)"
 };
 
-const inputStyle = {
-  background: "rgba(255,255,255,0.08)",
-  border: "1px solid rgba(255,255,255,0.2)",
-  color: "white",
-  padding: "8px 10px",
-  borderRadius: "3px",
-  outline: "none",
-  fontSize: 14,
-  transition: "all 0.2s ease",
-  backdropFilter: "blur(4px)"
-};
-
-
 const loadMnistPreset = () => {
   setDataset("mnist");
-  setEpochs(4);
-  setBatchSize(128);
+  setEpochs(10);
   setLearningRate(0.01);
 
   setNodes([
@@ -230,290 +225,39 @@ const loadMnistPreset = () => {
 
 const loadFashionMnistPreset = () => {
   setDataset("fashion");
-  setEpochs(8);              // малко повече, но още бързо
-  setBatchSize(128);
+  setEpochs(15);
   setLearningRate(0.001);
 
   setNodes([
-    // 🔹 BLOCK 1
-    {
-      id: "1",
-      type: "layer",
-      position: { x: 100, y: 50 },
-      data: {
-        type: "conv2d",
-        inChannels: 1,
-        outChannels: 32,
-        kernelH: 3,
-        kernelW: 3,
-        padH: 1,
-        padW: 1
-      }
-    },
-    { id: "bn1", type: "batchnorm", position: { x: 100, y: 220 }, data: { mode: "2d", numFeatures: 32 }},
-    { id: "2", type: "relu", position: { x: 100, y: 320 }, data: {} },
-
-    {
-      id: "3",
-      type: "layer",
-      position: { x: 100, y: 380 },
-      data: {
-        type: "conv2d",
-        inChannels: 32,
-        outChannels: 32,
-        kernelH: 3,
-        kernelW: 3,
-        padH: 1,
-        padW: 1
-      }
-    },
-    { id: "bn2", type: "batchnorm", position: { x: 100, y: 560 }, data: { mode: "2d", numFeatures: 32 }},
-    { id: "4", type: "relu", position: { x: 100, y: 640 }, data: {} },
-
-    {
-      id: "5",
-      type: "layer",
-      position: { x: 100, y: 740 },
-      data: {
-        type: "maxpool2d",
-        kernelH: 2,
-        kernelW: 2,
-        strideH: 2,
-        strideW: 2
-      }
-    },
-
-    // 🔹 BLOCK 2
-    {
-      id: "6",
-      type: "layer",
-      position: { x: 100, y: 840 },
-      data: {
-        type: "conv2d",
-        inChannels: 32,
-        outChannels: 64,
-        kernelH: 3,
-        kernelW: 3,
-        padH: 1,
-        padW: 1
-      }
-    },
-    { id: "bn3", type: "batchnorm", position: { x: 100, y: 1000 }, data: { mode: "2d", numFeatures: 64 }},
-    { id: "7", type: "relu", position: { x: 100, y: 1100 }, data: {} },
-
-    {
-      id: "8",
-      type: "layer",
-      position: { x: 100, y: 1160 },
-      data: {
-        type: "maxpool2d",
-        kernelH: 2,
-        kernelW: 2,
-        strideH: 2,
-        strideW: 2
-      }
-    },
-
-    // 🔹 CLASSIFIER
-    {
-      id: "9",
-      type: "linear",
-      position: { x: 100, y: 1260 },
-      data: {
-        inFeatures: 3136,   // ⚠️ намалено!
-        outFeatures: 128
-      }
-    },
-
-    { id: "drop1", type: "dropout", position: { x: 100, y: 1360 }, data: { p: 0.3 }},
-
-    {
-      id: "10",
-      type: "linear",
-      position: { x: 100, y: 1460 },
-      data: {
-        inFeatures: 128,
-        outFeatures: 10
-      }
-    }
-  ]);
-
-  setEdges([
-    { id: "e1", source: "1", target: "bn1" },
-    { id: "e2", source: "bn1", target: "2" },
-    { id: "e3", source: "2", target: "3" },
-    { id: "e4", source: "3", target: "bn2" },
-    { id: "e5", source: "bn2", target: "4" },
-    { id: "e6", source: "4", target: "5" },
-
-    { id: "e7", source: "5", target: "6" },
-    { id: "e8", source: "6", target: "bn3" },
-    { id: "e9", source: "bn3", target: "7" },
-    { id: "e10", source: "7", target: "8" },
-
-    { id: "e11", source: "8", target: "9" },
-    { id: "e12", source: "9", target: "drop1" },
-    { id: "e13", source: "drop1", target: "10" }
-  ]);
-};
-
-const loadCIFAR10Preset = () => {
-  setDataset("cifar10");
-  setEpochs(12);
-  setBatchSize(128);
-  setLearningRate(0.001);
-
-  setNodes([
-    // 🔵 BLOCK 1 (32x32 → 16x16)
-    {
-      id: "1",
-      type: "layer",
-      position: { x: 100, y: 40 },
-      data: { type: "conv2d", inChannels: 3, outChannels: 64, kernelH: 3, kernelW: 3, padH: 1, padW: 1 }
-    },
-    { id: "bn1", type: "batchnorm", position: { x: 100, y: 200 }, data: { mode: "2d", numFeatures: 64 }},
-    { id: "2", type: "relu", position: { x: 100, y: 300 }, data: {} },
-
-    {
-      id: "3",
-      type: "layer",
-      position: { x: 100, y: 350 },
-      data: { type: "conv2d", inChannels: 64, outChannels: 64, kernelH: 3, kernelW: 3, padH: 1, padW: 1 }
-    },
-    { id: "bn2", type: "batchnorm", position: { x: 100, y: 510 }, data: { mode: "2d", numFeatures: 64 }},
-    { id: "4", type: "relu", position: { x: 100, y: 600 }, data: {} },
-
-    {
-      id: "5",
-      type: "layer",
-      position: { x: 100, y: 700 },
-      data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
-    },
-
-    // 🟢 BLOCK 2 (16x16 → 8x8)
-    {
-      id: "6",
-      type: "layer",
-      position: { x: 100, y: 800 },
-      data: { type: "conv2d", inChannels: 64, outChannels: 128, kernelH: 3, kernelW: 3, padH: 1, padW: 1 }
-    },
-    { id: "bn3", type: "batchnorm", position: { x: 100, y: 960 }, data: { mode: "2d", numFeatures: 128 }},
-    { id: "7", type: "relu", position: { x: 100, y: 1050 }, data: {} },
-
-    {
-      id: "8",
-      type: "layer",
-      position: { x: 100, y: 1100 },
-      data: { type: "conv2d", inChannels: 128, outChannels: 128, kernelH: 3, kernelW: 3, padH: 1, padW: 1 }
-    },
-    { id: "bn4", type: "batchnorm", position: { x: 100, y: 1260 }, data: { mode: "2d", numFeatures: 128 }},
-    { id: "9", type: "relu", position: { x: 100, y: 1330 }, data: {} },
-
-    {
-      id: "10",
-      type: "layer",
-      position: { x: 100, y: 1400 },
-      data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
-    },
-
-    // 🟡 BLOCK 3 (8x8 → 4x4)
-    {
-      id: "11",
-      type: "layer",
-      position: { x: 100, y: 1500 },
-      data: { type: "conv2d", inChannels: 128, outChannels: 256, kernelH: 3, kernelW: 3, padH: 1, padW: 1 }
-    },
-    { id: "bn5", type: "batchnorm", position: { x: 100, y: 1660 }, data: { mode: "2d", numFeatures: 256 }},
-    { id: "12", type: "relu", position: { x: 100, y: 1750 }, data: {} },
-
-    {
-      id: "13",
-      type: "layer",
-      position: { x: 100, y: 1800 },
-      data: { type: "conv2d", inChannels: 256, outChannels: 256, kernelH: 3, kernelW: 3, padH: 1, padW: 1 }
-    },
-    { id: "bn6", type: "batchnorm", position: { x: 100, y: 1960 }, data: { mode: "2d", numFeatures: 256 }},
-    { id: "14", type: "relu", position: { x: 100, y: 2050 }, data: {} },
-
-    {
-      id: "15",
-      type: "layer",
-      position: { x: 100, y: 2100 },
-      data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
-    },
-
-    // 🔴 CLASSIFIER
-    {
-      id: "16",
-      type: "linear",
-      position: { x: 100, y: 2200 },
-      data: { inFeatures: 4096, outFeatures: 256 } // 256 * 4 * 4
-    },
-
-    { id: "bn7", type: "batchnorm", position: { x: 100, y: 2300 }, data: { mode: "1d", numFeatures: 256 }},
-    { id: "17", type: "relu", position: { x: 100, y: 2400 }, data: {} },
-
-    {
-      id: "18",
-      type: "dropout",
-      position: { x: 100, y: 2500 },
-      data: { p: 0.5 }
-    },
-
-    {
-      id: "19",
-      type: "linear",
-      position: { x: 100, y: 2600 },
-      data: { inFeatures: 256, outFeatures: 10 }
-    }
-  ]);
-
-  setEdges([
-    { id: "e1", source: "1", target: "bn1" },
-    { id: "e2", source: "bn1", target: "2" },
-    { id: "e3", source: "2", target: "3" },
-    { id: "e4", source: "3", target: "bn2" },
-    { id: "e5", source: "bn2", target: "4" },
-    { id: "e6", source: "4", target: "5" },
-
-    { id: "e7", source: "5", target: "6" },
-    { id: "e8", source: "6", target: "bn3" },
-    { id: "e9", source: "bn3", target: "7" },
-    { id: "e10", source: "7", target: "8" },
-    { id: "e11", source: "8", target: "bn4" },
-    { id: "e12", source: "bn4", target: "9" },
-    { id: "e13", source: "9", target: "10" },
-
-    { id: "e14", source: "10", target: "11" },
-    { id: "e15", source: "11", target: "bn5" },
-    { id: "e16", source: "bn5", target: "12" },
-    { id: "e17", source: "12", target: "13" },
-    { id: "e18", source: "13", target: "bn6" },
-    { id: "e19", source: "bn6", target: "14" },
-    { id: "e20", source: "14", target: "15" },
-
-    { id: "e21", source: "15", target: "16" },
-    { id: "e22", source: "16", target: "bn7" },
-    { id: "e23", source: "bn7", target: "17" },
-    { id: "e24", source: "17", target: "18" },
-    { id: "e25", source: "18", target: "19" }
-  ]);
-};
-
-const loadCIFAR100Preset = () => {
-  setDataset("cifar100");
-  setEpochs(30);
-  setLearningRate(0.001);
-
-  setNodes([
-    // 🟦 BLOCK 1
     {
       id: "1",
       type: "layer",
       position: { x: 100, y: 100 },
       data: {
         type: "conv2d",
-        inChannels: 3,
+        inChannels: 1,
+        outChannels: 32,
+        kernelH: 3,
+        kernelW: 3,
+        strideH: 1,
+        strideW: 1,
+        padH: 1,
+        padW: 1
+      }
+    },
+    {
+      id: "2",
+      type: "relu",
+      position: { x: 100, y: 300 },
+      data: {}
+    },
+    {
+      id: "3",
+      type: "layer",
+      position: { x: 100, y: 400 },
+      data: {
+        type: "conv2d",
+        inChannels: 32,
         outChannels: 64,
         kernelH: 3,
         kernelW: 3,
@@ -523,312 +267,88 @@ const loadCIFAR100Preset = () => {
         padW: 1
       }
     },
-    { id: "bn1", type: "batchnorm", position: { x: 100, y: 260 }, data: { mode: "2d", numFeatures: 64 }},
-    { id: "2", type: "relu", position: { x: 100, y: 360 }, data: {} },
-
     {
-      id: "3",
-      type: "layer",
-      position: { x: 100, y: 460 },
-      data: {
-        type: "conv2d",
-        inChannels: 64,
-        outChannels: 64,
-        kernelH: 3,
-        kernelW: 3,
-        padH: 1,
-        padW: 1
-      }
+      id: "4",
+      type: "relu",
+      position: { x: 100, y: 600 },
+      data: {}
     },
-    { id: "bn2", type: "batchnorm", position: { x: 100, y: 620 }, data: { mode: "2d", numFeatures: 64 }},
-    { id: "4", type: "relu", position: { x: 100, y: 720 }, data: {} },
-
     {
       id: "5",
       type: "layer",
-      position: { x: 100, y: 820 },
-      data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
+      position: { x: 100, y: 700 },
+      data: {
+        type: "maxpool2d",
+        kernelH: 2,
+        kernelW: 2,
+        strideH: 2,
+        strideW: 2
+      }
     },
-
-    // 🟩 BLOCK 2
     {
       id: "6",
       type: "layer",
-      position: { x: 100, y: 920 },
+      position: { x: 100, y: 800 },
       data: {
         type: "conv2d",
         inChannels: 64,
         outChannels: 128,
         kernelH: 3,
         kernelW: 3,
+        strideH: 1,
+        strideW: 1,
         padH: 1,
         padW: 1
       }
     },
-    { id: "bn3", type: "batchnorm", position: { x: 100, y: 1080 }, data: { mode: "2d", numFeatures: 128 }},
-    { id: "7", type: "relu", position: { x: 100, y: 1180 }, data: {} },
-
+    {
+      id: "7",
+      type: "relu",
+      position: { x: 100, y: 1000 },
+      data: {}
+    },
     {
       id: "8",
       type: "layer",
-      position: { x: 100, y: 1280 },
-      data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
-    },
-
-    // 🟨 BLOCK 3
-    {
-      id: "9",
-      type: "layer",
-      position: { x: 100, y: 1380 },
+      position: { x: 100, y: 1100 },
       data: {
-        type: "conv2d",
-        inChannels: 128,
-        outChannels: 256,
-        kernelH: 3,
-        kernelW: 3,
-        padH: 1,
-        padW: 1
+        type: "maxpool2d",
+        kernelH: 2,
+        kernelW: 2,
+        strideH: 2,
+        strideW: 2
       }
     },
-    { id: "bn4", type: "batchnorm", position: { x: 100, y: 1540 }, data: { mode: "2d", numFeatures: 256 }},
-    { id: "10", type: "relu", position: { x: 100, y: 1640 }, data: {} },
-
     {
-      id: "11",
-      type: "layer",
-      position: { x: 100, y: 1740 },
-      data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
-    },
-
-    // 🟥 CLASSIFIER
-    {
-      id: "12",
+      id: "9",
       type: "linear",
-      position: { x: 100, y: 1840 },
-      data: { inFeatures: 4096, outFeatures: 512 }
+      position: { x: 100, y: 1200 },
+      data: {
+        inFeatures: 6272,
+        outFeatures: 128
+      }
     },
-
-    { id: "bn5", type: "batchnorm", position: { x: 100, y: 1940 }, data: { mode: "1d", numFeatures: 512 }},
-    { id: "13", type: "relu", position: { x: 100, y: 2040 }, data: {} },
-
     {
-      id: "14",
-      type: "dropout",
-      position: { x: 100, y: 2140 },
-      data: { p: 0.5 }
-    },
-
-    {
-      id: "15",
+      id: "10",
       type: "linear",
-      position: { x: 150, y: 2240 },
-      data: { inFeatures: 512, outFeatures: 100 }
+      position: { x: 100, y: 1300 },
+      data: {
+        inFeatures: 128,
+        outFeatures: 10
+      }
     }
   ]);
 
   setEdges([
-    { id: "e1", source: "1", target: "bn1" },
-    { id: "e2", source: "bn1", target: "2" },
-    { id: "e3", source: "2", target: "3" },
-    { id: "e4", source: "3", target: "bn2" },
-    { id: "e5", source: "bn2", target: "4" },
-    { id: "e6", source: "4", target: "5" },
-
-    { id: "e7", source: "5", target: "6" },
-    { id: "e8", source: "6", target: "bn3" },
-    { id: "e9", source: "bn3", target: "7" },
-    { id: "e10", source: "7", target: "8" },
-
-    { id: "e11", source: "8", target: "9" },
-    { id: "e12", source: "9", target: "bn4" },
-    { id: "e13", source: "bn4", target: "10" },
-    { id: "e14", source: "10", target: "11" },
-
-    { id: "e15", source: "11", target: "12" },
-    { id: "e16", source: "12", target: "bn5" },
-    { id: "e17", source: "bn5", target: "13" },
-    { id: "e18", source: "13", target: "14" },
-    { id: "e19", source: "14", target: "15" }
-  ]);
-};
-
-const loadTinyImageNetPreset = () => {
-  setDataset("tinyimagenet");
-  setEpochs(40);
-  setLearningRate(0.001);
-
-  setNodes([
-    // 🟦 BLOCK 1 (64 → 32)
-    {
-      id: "1",
-      type: "layer",
-      position: { x: 100, y: 100 },
-      data: {
-        type: "conv2d",
-        inChannels: 3,
-        outChannels: 64,
-        kernelH: 3,
-        kernelW: 3,
-        padH: 1,
-        padW: 1
-      }
-    },
-    { id: "bn1", type: "batchnorm", position: { x: 100, y: 260 }, data: { mode: "2d", numFeatures: 64 }},
-    { id: "2", type: "relu", position: { x: 100, y: 360 }, data: {} },
-
-    {
-      id: "3",
-      type: "layer",
-      position: { x: 100, y: 460 },
-      data: {
-        type: "conv2d",
-        inChannels: 64,
-        outChannels: 64,
-        kernelH: 3,
-        kernelW: 3,
-        padH: 1,
-        padW: 1
-      }
-    },
-    { id: "bn2", type: "batchnorm", position: { x: 100, y: 620 }, data: { mode: "2d", numFeatures: 64 }},
-    { id: "4", type: "relu", position: { x: 100, y: 720 }, data: {} },
-
-    {
-      id: "5",
-      type: "layer",
-      position: { x: 100, y: 820 },
-      data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
-    },
-
-    // 🟩 BLOCK 2 (32 → 16)
-    {
-      id: "6",
-      type: "layer",
-      position: { x: 100, y: 920 },
-      data: {
-        type: "conv2d",
-        inChannels: 64,
-        outChannels: 128,
-        kernelH: 3,
-        kernelW: 3,
-        padH: 1,
-        padW: 1
-      }
-    },
-    { id: "bn3", type: "batchnorm", position: { x: 100, y: 1080 }, data: { mode: "2d", numFeatures: 128 }},
-    { id: "7", type: "relu", position: { x: 100, y: 1180 }, data: {} },
-
-    {
-      id: "8",
-      type: "layer",
-      position: { x: 100, y: 1280 },
-      data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
-    },
-
-    // 🟨 BLOCK 3 (16 → 8)
-    {
-      id: "9",
-      type: "layer",
-      position: { x: 100, y: 1380 },
-      data: {
-        type: "conv2d",
-        inChannels: 128,
-        outChannels: 256,
-        kernelH: 3,
-        kernelW: 3,
-        padH: 1,
-        padW: 1
-      }
-    },
-    { id: "bn4", type: "batchnorm", position: { x: 100, y: 1540 }, data: { mode: "2d", numFeatures: 256 }},
-    { id: "10", type: "relu", position: { x: 100, y: 1640 }, data: {} },
-
-    {
-      id: "11",
-      type: "layer",
-      position: { x: 100, y: 1740 },
-      data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
-    },
-
-    // 🟥 BLOCK 4 (8 → 4)
-    {
-      id: "12",
-      type: "layer",
-      position: { x: 100, y: 1840 },
-      data: {
-        type: "conv2d",
-        inChannels: 256,
-        outChannels: 512,
-        kernelH: 3,
-        kernelW: 3,
-        padH: 1,
-        padW: 1
-      }
-    },
-    { id: "bn5", type: "batchnorm", position: { x: 100, y: 2000 }, data: { mode: "2d", numFeatures: 512 }},
-    { id: "13", type: "relu", position: { x: 100, y: 2100 }, data: {} },
-
-    {
-      id: "14",
-      type: "layer",
-      position: { x: 100, y: 2200 },
-      data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
-    },
-
-    // 🧾 CLASSIFIER
-    {
-      id: "15",
-      type: "linear",
-      position: { x: 100, y: 2300 },
-      data: { inFeatures: 8192, outFeatures: 512 }
-    },
-
-    { id: "bn6", type: "batchnorm", position: { x: 100, y: 2400 }, data: { mode: "1d", numFeatures: 512 }},
-    { id: "16", type: "relu", position: { x: 100, y: 2500 }, data: {} },
-
-    {
-      id: "17",
-      type: "dropout",
-      position: { x: 100, y: 2600 },
-      data: { p: 0.5 }
-    },
-
-    {
-      id: "18",
-      type: "linear",
-      position: { x: 100, y: 2700 },
-      data: { inFeatures: 512, outFeatures: 200 }
-    }
-  ]);
-
-  setEdges([
-    { id: "e1", source: "1", target: "bn1" },
-    { id: "e2", source: "bn1", target: "2" },
-    { id: "e3", source: "2", target: "3" },
-    { id: "e4", source: "3", target: "bn2" },
-    { id: "e5", source: "bn2", target: "4" },
-    { id: "e6", source: "4", target: "5" },
-
-    { id: "e7", source: "5", target: "6" },
-    { id: "e8", source: "6", target: "bn3" },
-    { id: "e9", source: "bn3", target: "7" },
-    { id: "e10", source: "7", target: "8" },
-
-    { id: "e11", source: "8", target: "9" },
-    { id: "e12", source: "9", target: "bn4" },
-    { id: "e13", source: "bn4", target: "10" },
-    { id: "e14", source: "10", target: "11" },
-
-    { id: "e15", source: "11", target: "12" },
-    { id: "e16", source: "12", target: "bn5" },
-    { id: "e17", source: "bn5", target: "13" },
-    { id: "e18", source: "13", target: "14" },
-
-    { id: "e19", source: "14", target: "15" },
-    { id: "e20", source: "15", target: "bn6" },
-    { id: "e21", source: "bn6", target: "16" },
-    { id: "e22", source: "16", target: "17" },
-    { id: "e23", source: "17", target: "18" }
+    { id: "e1-2", source: "1", target: "2" },
+    { id: "e2-3", source: "2", target: "3" },
+    { id: "e3-4", source: "3", target: "4" },
+    { id: "e4-5", source: "4", target: "5" },
+    { id: "e5-6", source: "5", target: "6" },
+    { id: "e6-7", source: "6", target: "7" },
+    { id: "e7-8", source: "7", target: "8" },
+    { id: "e8-9", source: "8", target: "9" },
+    { id: "e9-10", source: "9", target: "10" }
   ]);
 };
 
@@ -940,33 +460,23 @@ const loadHousingPreset = () => {
 useEffect(() => {
     if(!preset) return;
 
-    if(preset === "mnist"){
+    if(preset == "mnist"){
       loadMnistPreset();
     }
-    if(preset === "fashion"){
+    if(preset == "fashion"){
       loadFashionMnistPreset();
     }
-    if(preset === "forex"){
+    if(preset == "forex"){
       loadForexPreset();
     }
-    if(preset === "housing"){
+    if(preset == "housing"){
       loadHousingPreset();
-    }
-    if(preset === "cifar10"){
-      loadCIFAR10Preset();
-    }
-    if(preset === "cifar100"){
-      loadCIFAR100Preset();
-    }
-    if(preset == "tinyimagenet"){
-      loadTinyImageNetPreset();
     }
   }, [preset]);
 
-
   const onAddNode = (type) => {
     let defaultData = {}
-    if(type === "conv1d"){
+    if(type == "conv1d"){
       defaultData = {
         inChannels: 1,
         outChannels: 1,
@@ -975,7 +485,7 @@ useEffect(() => {
         padding: 0,
       };
     }
-    if(type === "conv2d"){
+    if(type == "conv2d"){
       defaultData = {
         inChannels: 1,
         outChannels: 1,
@@ -987,7 +497,7 @@ useEffect(() => {
         padW: 0,
       };
     }
-    if(type === "conv3d"){
+    if(type == "conv3d"){
       defaultData = {
         inChannels: 1,
         outChannels: 1,
@@ -1036,7 +546,7 @@ useEffect(() => {
         strideW: 2,
       };
     }
-    if(type === "avgpool3d"){
+    if(type == "avgpool3d"){
       defaultData = {
         kernelD: 2,
         kernelH: 2,
@@ -1046,7 +556,7 @@ useEffect(() => {
         strideW: 2,
       };
     }
-    if(type === "maxpool1d"){
+    if(type == "maxpool1d"){
       defaultData = {
         kernel: 2,
         stride: 2,
@@ -1161,7 +671,7 @@ useEffect(() => {
     setNodes((nds) => [...nds, newNode]);
   }
 
-  const handleAddBatchNorm = (mode) => {
+    const handleAddBatchNorm = (mode) => {
     const is1d = mode === "batchnorm1d";
     const newNode = {
       id: crypto.randomUUID(),
@@ -1202,7 +712,7 @@ useEffect(() => {
   const updateConcatDate = (id, newData) =>{
     setNodes((nds) =>
       nds.map((node) => 
-        node.id === id
+        node.id == id
         ? {...node, data: {...node.data, ...newData}}
         : node
       ) 
@@ -1287,18 +797,6 @@ useEffect(() => {
     setNodes((nds) => [...nds, newNode]);
   }
 
-  const handleAddUINode = () =>{
-    const newNode = {
-      id: crypto.randomUUID(),
-      type: "ui",
-      position: {x: 400, y: 100},
-      data:{
-        label: "Loss Graph",
-      },
-    };
-    setNodes((nds) => [...nds, newNode]);
-  }
-
   const getOutputDim = (node) => {
     if (!node || !node.data) return null;
 
@@ -1321,7 +819,7 @@ useEffect(() => {
 
     if(targetNode.type === "embedding") return false;
 
-    if(tdim!==sdim) return false;
+    if(tdim!=sdim) return false;
 
     if (targetNode.type === "conv" && t.dim === "1d" && sourceNode.type === "linear") {
       return (t.inChannels ?? null) === (s.outFeatures ?? null);
@@ -1396,11 +894,16 @@ useEffect(() => {
     setTrainingStatus("Dataset loaded successfully!")
   };
 
+  //const API_URL = "https://blockbuild-fvhs.onrender.com";
+  //const API_URL = "https://blockbuild-ai-u4d8.onrender.com";
+  //const API_URL = "http://localhost:8000/run";
+  const API_URL = "https://blockbuild-ai-u4d8.onrender.com"
+
   
   // Train
   const handleTrain = async () =>{
     console.log("NODES BEFORE BACKEND:", nodes);
-    if(inputSource === "manual"){
+    if(inputSource == "manual"){
       if (!trainingSamples || trainingSamples.length === 0) {
         setTrainingStatus("No training samples loaded!");
         return;
@@ -1432,21 +935,14 @@ useEffect(() => {
         learningRate,
         edges: edges.map(e => ({ source: e.source, target: e.target })),
         training: trainingSamples,
-
         //noiseLevel: noiseLevel,
         };
         try{
-        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/train"/*"http://localhost:8000/train_dataset"/*`${API_URL}/train`*/, {
+        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/train"/* `${API_URL}/train`*/, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify(payload),
         });
-
-        if(!res.ok){
-          const txt = await res.text();
-          console.log("SERVER ERROR:", txt);
-          return;
-        }
         
         if(!res.ok){
           const txt = await res.text();
@@ -1488,7 +984,7 @@ useEffect(() => {
     }
     if(inputSource === "dataset"){
       try{
-        setTrainingStatus("Training on dataset...");
+        setTrainingStatus("Training on MNIST...");
         setConsoleOutput([]);
 
         const payload = {
@@ -1516,7 +1012,7 @@ useEffect(() => {
           //noiseLevel: noiseLevel,
         }
         // http://localhost:8000
-        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/train_dataset"/*"http://localhost:8000/train_dataset"*/, {
+        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/train_dataset"/* "http://localhost:8000/train_dataset"*/, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify(payload)
@@ -1559,7 +1055,7 @@ useEffect(() => {
             appendToConsole(`Epoch ${i+1}: ${v}`)
           )
         }
-        setTrainingStatus('Training completed.');
+        setTrainingStatus('MNIST training completed.');
       } catch(err){
         console.error("NETWORK ERROR:", err);
         setTrainingStatus("Training failed! (network error)");
@@ -1571,7 +1067,7 @@ useEffect(() => {
 
  // Single test
   const handleRun = async () =>{
-    if(inputSource === "manual"){
+    if(inputSource == "manual"){
       console.log("🔥 handleRun called");
       try{
         const parsedTest=parseSample(testInput);
@@ -1580,7 +1076,7 @@ useEffect(() => {
           throw new Error("Parsed test input is invalid.");
         }
 
-        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/run"/*"http://localhost:8000/run"/* `${API_URL}/run`*/, {
+        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/run"/* `${API_URL}/run`*/, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify({
@@ -1609,13 +1105,13 @@ useEffect(() => {
         setTestOutput("Error: "+err.message);    
       }
     }
-    if(inputSource === "dataset"){
+    if(inputSource == "dataset"){
       console.log("HandleRun called (dataset)");
       
 
       try{
-        setTrainingStatus("Testing on dataset...");
-        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/test_dataset"/*"http://localhost:8000/test_dataset"*/, {
+        setTrainingStatus("Testing on MNIST...");
+        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/test_dataset", {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify({
@@ -1625,9 +1121,6 @@ useEffect(() => {
         })
 
         const data = await res.json();
-        console.log("SERVER RESPONSE:", data);
-
-
 
         appendToConsole("TEST OUTPUT");
         appendToConsole(
@@ -1646,7 +1139,7 @@ useEffect(() => {
         }
         
         setTestOutput(JSON.stringify(data, null, 2));
-        setTrainingStatus("Testing completed.");
+        setTrainingStatus("MNIST testing completed.");
       } catch (err){
         appendToConsole("Dataset test failed");
         setTestOutput("Error" + err.message);
@@ -1886,29 +1379,6 @@ useEffect(() => {
       )}
     </div>
 
-    <div style={{ position: "relative" }}>
-      <button 
-      style={buttonStyle}
-      onClick={() => setOpen(open === "viz" ? null : "viz")}>
-        📊  Visualisation
-      </button>
-
-      {open === "viz" && (
-        <div style={{
-          position: "absolute",
-          top: "100%",
-          left: 0,
-          background: "#141313",
-          padding: "10px",
-          zIndex: 1000
-        }}>
-          <button onClick={handleAddUINode}>
-            ➕Add Loss Graph
-        </button>
-        </div>
-      )}
-    </div>
-
       </div>
       
 
@@ -1959,7 +1429,6 @@ useEffect(() => {
             />
         </label>
 
-
           <h3> Input Source</h3>
           <label>
             <input
@@ -1979,7 +1448,7 @@ useEffect(() => {
               checked = {inputSource === "dataset"}
               onChange={() => setInputSource("dataset")}
             />
-            Dataset
+            Dataset (MNIST)
           </label>
           <hr/>
 
@@ -2015,9 +1484,6 @@ useEffect(() => {
               >
                 <option value="mnist"> MNIST </option>
                 <option value="fashion"> Fashion MNIST</option>
-                <option value="cifar10"> CIFAR-10</option>
-                <option value="cifar100"> CIFAR-100</option>
-                <option value="tinyimagenet"> Tiny ImageNet</option>
               </select>
             </label>
 
@@ -2049,10 +1515,10 @@ useEffect(() => {
             </label>
             <>
               <button type="button" onClick={handleTrain}>
-                Train on dataset
+                Train on MNIST train set
               </button>
               <button type="button" onClick={handleRun}> 
-                Run on dataset
+                Run on MNIST test set
               </button>
               <p>{trainStatus}</p>
             </>
@@ -2061,16 +1527,6 @@ useEffect(() => {
         )}
 
           
-      </div>
-
-      <div>
-        {showPlot && (
-          <img
-            src={plotUrl}
-            alt="Loss graph"
-            style={{ width: "500px", marginTop: "10px" }}
-          />
-        )}
       </div>
       <div>
 

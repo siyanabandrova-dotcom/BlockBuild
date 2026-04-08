@@ -29,8 +29,8 @@ const Toolbar = () =>{
         cursor: "pointer",
         color: "white",
         fontSize: 16,
-        position: "relative",
-        top: "100%",  
+        //position: "relative",
+        //top: "100%",  
     };
 
     return(
@@ -88,9 +88,12 @@ const Toolbar = () =>{
             Documentation
         </button>
 
-        <div style={{padding: "2px 0px",
+        <div style={{
+    padding: "2px 0px",
     display: "flex",
-    fontSize: 38}}>
+    fontSize: 38,
+    position: "relative"   // 🔥 ВАЖНО
+}}>
 
         <button 
             style={buttonStyle}
@@ -109,8 +112,8 @@ const Toolbar = () =>{
             <div style={{
                 position: "absolute",
                 //position: "flex",
-                top: "50px",
-                left: "360px",
+                top: "100%",
+                left: "0",
                 //background: "#316475",
                 background: "#2999c9",
                 //background: "linear-gradient(135deg, #2999c9, #316475)",

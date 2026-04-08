@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
+import asyncio
 from pydantic import BaseModel
 from typing import List, Optional, Literal, Dict
 
@@ -7,14 +8,20 @@ import torch.nn as nn
 import math
 from fastapi.middleware.cors import CORSMiddleware
 
-from torchvision import datasets, transforms
+
+import os
 from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+from torchvision.datasets import ImageFolder
 
 
 import matplotlib
 matplotlib.use("Agg") 
+import io
+from fastapi.responses import StreamingResponse
 
 import matplotlib.pyplot as plt
+
 
 
 # Documetation
@@ -81,6 +88,9 @@ class NodeData(BaseModel):
 
     softmaxDim: Optional[int] = None
 
+    numFeatures: Optional[int] = None
+    mode: Optional[str] = None
+
     class Config:
         extra = "allow"
 
@@ -92,6 +102,8 @@ class EdgeData(BaseModel):
 class TrainingSample(BaseModel):
     input: dict
     output: dict
+    #input: List[float]
+    #output: List[float]
 
 
 class GraphRequest(BaseModel):
@@ -117,7 +129,28 @@ class TrainRequest(BaseModel):
 class TestConfig(BaseModel):
     noise_level: float = 0.0
     max_samples: int = 20
-    datasetName: Optional[Literal["mnist", "fashion"]] =  "mnist"
+    datasetName: Optional[Literal["mnist", "fashion", "cifar10", "cifar100", "tinyimagenet"]] =  "mnist"
+
+plot_loss_history = []
+
+
+@app.get("/loss_plot")
+def get_loss_plot():
+
+    buf = io.BytesIO()
+
+    plt.figure()
+    plt.plot(plot_loss_history)
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("BlockBuild - Loss History")
+
+    plt.savefig(buf, format = "png")
+    plt.close()
+
+    buf.seek(0)
+
+    return StreamingResponse(buf, media_type="image/png")
 
 
 def topological_sort(nodes, edges):
@@ -167,20 +200,90 @@ layers={}
 
 
 def load_dataset(dataset_name: str, batch_size=64):
+    """
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,),(0.3081,))
     ])
+    """
 
     DATASETS = {
-        "mnist": datasets.MNIST,
-        "fashion": datasets.FashionMNIST,
+        "mnist": (
+            datasets.MNIST,
+            transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,),(0.3081,))
+            ])
+        ),
+        "fashion":(
+            datasets.FashionMNIST,
+            transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,),(0.3081,))
+            ])
+        ),
+        "cifar10":(
+            datasets.CIFAR10,
+            transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    (0.4914, 0.4822, 0.4465),
+                    (0.2023, 0.1994, 0.2010))
+            ])
+        ),
+        "cifar100":(
+            datasets.CIFAR100,
+            transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    (0.4914, 0.4822, 0.4465),
+                    (0.2023, 0.1994, 0.2010))
+            ])
+        ),
     }
+
+    #Tiny IMAGENET dataset
+    if dataset_name == "tinyimagenet":
+        transform_train = transforms.Compose([
+            transforms.RandomCrop(64, padding = 4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                (0.485, 0.456, 0.406),
+                (0.229, 0.224, 0.225)
+            )
+        ])
+
+        transform_test = transforms.Compose([
+            transforms.Resize(64),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                (0.485, 0.456, 0.406),
+                (0.229, 0.224, 0.225)
+            )
+        ])
+
+        train_ds = ImageFolder(
+            root = "./data/tiny-imagenet-200/train",
+            transform = transform_train
+        )
+
+        test_ds = ImageFolder(
+            root = "./data/tiny-imagenet-200/train",
+            transform = transform_test
+        )
+
+        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+        test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+
+        return train_loader, test_loader
+
+
 
     if dataset_name not in DATASETS:
         raise ValueError(f"Unknown dataset: {dataset_name}")
     
-    dataset_class = DATASETS[dataset_name]
+    dataset_class, transform = DATASETS[dataset_name]
 
     train_ds = dataset_class(
         root = "./data",
@@ -201,7 +304,6 @@ def load_dataset(dataset_name: str, batch_size=64):
 
 
     return train_loader, test_loader
-
 
 def add_noise(x, noise_level):
     if noise_level == 0:
@@ -225,8 +327,33 @@ def get_label_map(dataset_name: str):
             8: "Bag",
             9: "Ankle boot",
         }
+    elif dataset_name == "tinyimagenet":
+        label_map = {}
+
+        with open("tiny-imagenet-200/words.txt") as f:
+            for line in f:
+                wnid, words = line.strip().split("\t")
+                label_map[wnid] = words.split(",")[0]  # първото име
+
+        return label_map
+
     else:
         return None
+    
+def get_tinyimagenet_maps():
+    wnid_to_name = {}
+    with open("tiny-imagenet-200/words.txt") as f:
+        for line in f:
+            wnid, words = line.strip().split("\t")
+            wnid_to_name[wnid] = words.split(",")[0]
+
+    idx_to_name = {}
+    with open("tiny-imagenet-200/wnids.txt") as f:
+        for i, wnid in enumerate(f):
+            wnid = wnid.strip()
+            idx_to_name[i] = wnid_to_name[wnid]
+
+    return idx_to_name
 
 
 def forward_once(z):
@@ -299,6 +426,26 @@ def forward_once(z):
                 ) * (-1e9)
   
                 current = scores + mask 
+            
+            elif t == "batchnorm":
+                mode = getattr(node, "mode", "1d")
+
+                if mode == "1d":
+                    if current.dim() == 4:
+                        current = current.view(current.size(0), -1)
+
+                    if current.dim() == 2:
+                        current = layer(current)
+                    elif current.dim() == 3:
+                        current = layer(current)
+
+                elif mode == "2d":
+                    if current.dim() != 4:
+                        raise ValueError(f"BatchNorm2d expects 4D input, got {current.shape}")
+
+                    current = layer(current)
+            elif t == "ui":
+                continue
 
             else:
                 raise ValueError(f"Unknown node type {node.type}")
@@ -306,15 +453,20 @@ def forward_once(z):
 
         return node_outputs[sorted_nodes[-1].id]
 
+
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 BASE_DIR = Path(__file__).resolve().parent
 
 app.mount("/public", StaticFiles(directory=BASE_DIR / "public"), name="public")
 
+connections = {}
+
+
 @app.post("/train")
 def train_manual(graph: GraphRequest):
     global layers, sorted_nodes, graph_nodes, graph_edges
+    global plot_loss_history 
     graph_nodes = graph.nodes
     graph_edges = graph.edges
 
@@ -475,6 +627,19 @@ def train_manual(graph: GraphRequest):
 
         elif t == "mask":
             layers[node.id] = None
+
+        elif t == "batchnorm":
+            mode = getattr(node, "mode", "1d")
+
+            if mode == "1d":
+                layers[node.id] = nn.BatchNorm1d(node.numFeatures)
+            elif mode == "2d":
+                layers[node.id] = nn.BatchNorm2d(node.numFeatures)
+            else:
+                raise ValueError(f"Unsupported BatchNorm mode: {mode}")
+            
+        elif t == "ui":
+            continue
         
     params = []
     for m in layers.values():
@@ -486,6 +651,8 @@ def train_manual(graph: GraphRequest):
 
 
     loss_history = []
+
+    clean_loss_history = []
 
     for epochs in range(num_epochs):
         optimizer.zero_grad()
@@ -508,7 +675,6 @@ def train_manual(graph: GraphRequest):
 
     out = torch.nan_to_num(out, nan=0.0, posinf=1e6, neginf=-1e6)
 
-    clean_loss_history = []
     for l in loss_history:
         if math.isfinite(l):
             clean_loss_history.append(l)
@@ -516,13 +682,15 @@ def train_manual(graph: GraphRequest):
             clean_loss_history.append(None)
 
     
-    plt.plot(clean_loss_history)
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title("BlockBuild – Loss History")
-    plt.savefig("loss.png")
-    plt.close()
+    #plt.plot(clean_loss_history)
+    #plt.xlabel("Epoch")
+    #plt.ylabel("Loss")
+    #plt.title("BlockBuild – Loss History")
+    #plt.savefig("loss.png")
+    #plt.close()
 
+    plot_loss_history.clear()
+    plot_loss_history.extend(clean_loss_history)
 
     return {
         "output": out.tolist(),
@@ -541,6 +709,7 @@ def train_dataset(graph: GraphRequest):
     train_loader, test_loader = load_dataset(dataset_name, batch_size)
 
     global layers, sorted_nodes, graph_nodes, graph_edges
+    global plot_loss_history 
 
     sorted_nodes = topological_sort(graph.nodes, graph.edges)
 
@@ -687,6 +856,19 @@ def train_dataset(graph: GraphRequest):
 
         elif t == "mask":
             layers[node.id] = None
+
+        elif t == "batchnorm":
+            mode = getattr(node, "mode", "1d")
+
+            if mode == "1d":
+                layers[node.id] = nn.BatchNorm1d(node.numFeatures)
+            elif mode == "2d":
+                layers[node.id] = nn.BatchNorm2d(node.numFeatures)
+            else:
+                raise ValueError(f"Unsupported BatchNorm mode: {mode}")
+            
+        elif t == "ui":
+            continue
     
     
     params = []
@@ -697,11 +879,16 @@ def train_dataset(graph: GraphRequest):
     optimizer = torch.optim.SGD(params, lr=lr)
 
     loss_history = []
+    clean_loss_history = []
+    accuracy_history = []
 
     criterion = nn.CrossEntropyLoss()
     
     for epoch in range(num_epochs):
         epoch_loss = 0
+        correct = 0
+        total = 0
+
         for images, labels in train_loader:
 
             #images = add_noise(images, config.noise_level)
@@ -712,12 +899,20 @@ def train_dataset(graph: GraphRequest):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            
+            #accuracy
+            preds = torch.argmax(outputs, dim = 1)
+            correct += (preds == labels).sum().item()
+            total += labels.size(0)
+
 
             epoch_loss += loss.item()
 
         epoch_loss /= len(train_loader)  
-        loss_history.append(epoch_loss)
+        epoch_acc = correct / total
 
+        loss_history.append(epoch_loss)
+        accuracy_history.append(epoch_acc)
 
     for layer in layers.values():
         if layer is not None:
@@ -732,8 +927,12 @@ def train_dataset(graph: GraphRequest):
 
     label_map = None
 
-    if hasattr(train_loader.dataset, "classes"):
+    if dataset_name == "tinyimagenet":
+        label_map = get_tinyimagenet_maps()
+
+    elif hasattr(train_loader.dataset, "classes"):
         label_map = train_loader.dataset.classes
+
 
     with torch.no_grad():
         for x, y in train_loader:
@@ -768,7 +967,6 @@ def train_dataset(graph: GraphRequest):
 
     accuracy = correct / total if total > 0 else 0.0
 
-    clean_loss_history = []
     for l in loss_history:
         if math.isfinite(l):
             clean_loss_history.append(l)
@@ -776,12 +974,16 @@ def train_dataset(graph: GraphRequest):
             clean_loss_history.append(None)
 
     
-    plt.plot(clean_loss_history)
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title("BlockBuild – Loss History")
-    plt.savefig("loss.png")
-    plt.close()
+    #plt.plot(clean_loss_history)
+    #plt.xlabel("Epoch")
+    #plt.ylabel("Loss")
+    #plt.title("BlockBuild – Loss History")
+    #plt.savefig("loss.png")
+    #plt.close()
+
+    plot_loss_history.clear()
+    plot_loss_history.extend(clean_loss_history)
+
 
 
     return {
@@ -857,7 +1059,9 @@ def test_dataset(config: TestConfig):
     samples = []
 
     label_map = None
-    if hasattr(train_loader.dataset, "classes"):
+    if train_loader.dataset == "tinyimagenet":
+        label_map = get_tinyimagenet_maps()
+    elif hasattr(train_loader.dataset, "classes"):
         label_map = train_loader.dataset.classes
 
     with torch.no_grad():

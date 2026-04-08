@@ -27,38 +27,10 @@ export default function Home(){
             //justifyContent: "center",
             //alignItems: "center",
             fontFamily: "Arial, sans-serif",
-            //overflow: "hidden",
-            //textAlign: "center",
             padding: 20,
             position: "center",
             }}>
 
-            {/* HEADER 
-            <div
-            style={{
-                padding: "12px 40px",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                background: "rgba(0,0,0,0.15)",
-                backdropFilter: "blur(6px)",
-                fontSize: 18
-            }}
-            >
-            <h1 style={{
-            fontSize: 40,
-            marginBottom: 20,
-            letterSpacing: 2,
-            }}> BlockBuild </h1>
-            <h3 style={{
-                fontSize: 22,
-                maxWidth: 700,
-                marginBottom: 40,
-                opacity: 0.9,
-            }}> Visual Neural Network Builder</h3>
-                            
-
-            </div>*/}
             
             <div
             style={{
@@ -204,9 +176,10 @@ export default function Home(){
                         }}
                         >
                         <h3> MNIST Classifier </h3>
-                        
+
                         <p style={{ opacity: 0.8 }}>
-                            Neural network trained on handwritten digits.
+                        Neural network trained on the MNIST dataset.
+                        Achieved 93% training accuracy and 95% test accuracy for 4 epochs.
                         </p>
                         
                     </div>
@@ -226,6 +199,7 @@ export default function Home(){
                         <h3> Fashion-MNIST Classifier </h3>
                         <p style={{ opacity: 0.8 }}>
                             Image classifier for black-and-white clothes images.    
+                            Achieved 87% training accuracy and 85% test accuracy for 8 epochs.
                         </p>
                     </div>
 
@@ -286,6 +260,59 @@ export default function Home(){
                         </p>
 
                     </div>
+
+
+                    <div style = {cardStyle}
+                        onClick={() => navigate("/workspace", {state: {preset: "cifar10"}})}
+                        onMouseEnter={(e) => {
+                            e.target.style.transform = "scale(1.05)";
+                            e.target.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
+                        }}
+
+                        onMouseLeave={(e) => {
+                        e.target.style.transform = "scale(1)";
+                        e.target.style.boxShadow = "none";
+                        }}>
+                        <h3> CIFAR-10 Convolution Neural Network </h3>
+                        <p style={{ opacity: 0.8 }}>
+                            Model for classification for CIFAR-10 (32 x 32 color images with 10 classes).
+                        </p>
+                    </div>
+
+                    <div style = {cardStyle}
+                        onClick={() => navigate("/workspace", {state: {preset: "cifar100"}})}
+                        onMouseEnter={(e) => {
+                            e.target.style.transform = "scale(1.05)";
+                            e.target.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
+                        }}
+
+                        onMouseLeave={(e) => {
+                        e.target.style.transform = "scale(1)";
+                        e.target.style.boxShadow = "none";
+                        }}>
+                        <h3> CIFAR-100 Convolution Neural Network </h3>
+                        <p style={{ opacity: 0.8 }}>
+                            Model for classification for CIFAR-100 (32 x 32 color images with 100 classes).
+                        </p>
+                    </div>
+
+                    <div style = {cardStyle}
+                        onClick={() => navigate("/workspace", {state: {preset: "tinyimagenet"}})}
+                        onMouseEnter={(e) => {
+                            e.target.style.transform = "scale(1.05)";
+                            e.target.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
+                        }}
+
+                        onMouseLeave={(e) => {
+                        e.target.style.transform = "scale(1)";
+                        e.target.style.boxShadow = "none";
+                        }}>
+                        <h3> Tiny ImageNet Convolution Neural Network </h3>
+                        <p style={{ opacity: 0.8 }}>
+                            Model for classification for TinyImageNet (64 x 64 color images with 200 classes).
+                        </p>
+                    </div>
+
                 </div>
 
             </div>

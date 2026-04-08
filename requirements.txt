@@ -7,3 +7,5 @@ matplotlib
 torch==2.2.2
 torchvision
 
+python-multipart
+Pillow

@@ -29,10 +29,11 @@ venv/
 
 #Dataset + Loss
 datasets/
-*.png
+loss_plot.png
 node_modules/
 __pycache__/
 .env
+tiny-imagenet-200/
 
 data/
 
