@@ -230,7 +230,7 @@ const loadMnistPreset = () => {
 
 const loadFashionMnistPreset = () => {
   setDataset("fashion");
-  setEpochs(8);              // малко повече, но още бързо
+  setEpochs(8);
   setBatchSize(128);
   setLearningRate(0.001);
 
@@ -320,7 +320,7 @@ const loadFashionMnistPreset = () => {
       type: "linear",
       position: { x: 100, y: 1260 },
       data: {
-        inFeatures: 3136,   // ⚠️ намалено!
+        inFeatures: 3136,
         outFeatures: 128
       }
     },
@@ -364,7 +364,7 @@ const loadCIFAR10Preset = () => {
   setLearningRate(0.001);
 
   setNodes([
-    // 🔵 BLOCK 1 (32x32 → 16x16)
+    // BLOCK 1 (32x32 → 16x16)
     {
       id: "1",
       type: "layer",
@@ -390,7 +390,7 @@ const loadCIFAR10Preset = () => {
       data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
     },
 
-    // 🟢 BLOCK 2 (16x16 → 8x8)
+    //  BLOCK 2 (16x16 → 8x8)
     {
       id: "6",
       type: "layer",
@@ -416,7 +416,7 @@ const loadCIFAR10Preset = () => {
       data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
     },
 
-    // 🟡 BLOCK 3 (8x8 → 4x4)
+    //  BLOCK 3 (8x8 → 4x4)
     {
       id: "11",
       type: "layer",
@@ -442,7 +442,7 @@ const loadCIFAR10Preset = () => {
       data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
     },
 
-    // 🔴 CLASSIFIER
+    //  CLASSIFIER
     {
       id: "16",
       type: "linear",
@@ -506,7 +506,7 @@ const loadCIFAR100Preset = () => {
   setLearningRate(0.001);
 
   setNodes([
-    // 🟦 BLOCK 1
+    //  BLOCK 1
     {
       id: "1",
       type: "layer",
@@ -550,7 +550,7 @@ const loadCIFAR100Preset = () => {
       data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
     },
 
-    // 🟩 BLOCK 2
+    //  BLOCK 2
     {
       id: "6",
       type: "layer",
@@ -575,7 +575,7 @@ const loadCIFAR100Preset = () => {
       data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
     },
 
-    // 🟨 BLOCK 3
+    //  BLOCK 3
     {
       id: "9",
       type: "layer",
@@ -600,7 +600,7 @@ const loadCIFAR100Preset = () => {
       data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
     },
 
-    // 🟥 CLASSIFIER
+    //  CLASSIFIER
     {
       id: "12",
       type: "linear",
@@ -658,7 +658,7 @@ const loadTinyImageNetPreset = () => {
   setLearningRate(0.001);
 
   setNodes([
-    // 🟦 BLOCK 1 (64 → 32)
+    //  BLOCK 1 (64 → 32)
     {
       id: "1",
       type: "layer",
@@ -700,7 +700,7 @@ const loadTinyImageNetPreset = () => {
       data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
     },
 
-    // 🟩 BLOCK 2 (32 → 16)
+    //  BLOCK 2 (32 → 16)
     {
       id: "6",
       type: "layer",
@@ -725,7 +725,7 @@ const loadTinyImageNetPreset = () => {
       data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
     },
 
-    // 🟨 BLOCK 3 (16 → 8)
+    //  BLOCK 3 (16 → 8)
     {
       id: "9",
       type: "layer",
@@ -750,7 +750,7 @@ const loadTinyImageNetPreset = () => {
       data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
     },
 
-    // 🟥 BLOCK 4 (8 → 4)
+    //  BLOCK 4 (8 → 4)
     {
       id: "12",
       type: "layer",
@@ -775,7 +775,7 @@ const loadTinyImageNetPreset = () => {
       data: { type: "maxpool2d", kernelH: 2, kernelW: 2, strideH: 2, strideW: 2 }
     },
 
-    // 🧾 CLASSIFIER
+    //  CLASSIFIER
     {
       id: "15",
       type: "linear",
@@ -1419,7 +1419,7 @@ useEffect(() => {
                 : (n.type === "layer" ? null : n.type);
 
             if (!safeType) {
-                console.error("❗ Node missing data.type → FIX THIS NODE:", n);
+                console.error("Node missing data.type → FIX THIS NODE:", n);
             }
 
             return {
@@ -1499,7 +1499,7 @@ useEffect(() => {
                   : (n.type === "layer" ? null : n.type);
 
               if (!safeType) {
-                  console.error("❗ Node missing data.type → FIX THIS NODE:", n);
+                  console.error(" Node missing data.type → FIX THIS NODE:", n);
               }
 
               return {
@@ -1572,7 +1572,7 @@ useEffect(() => {
  // Single test
   const handleRun = async () =>{
     if(inputSource === "manual"){
-      console.log("🔥 handleRun called");
+      console.log("handleRun called");
       try{
         const parsedTest=parseSample(testInput);
 
