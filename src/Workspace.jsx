@@ -1784,7 +1784,7 @@ useEffect(() => {
 
   async function sendToBackend(pixels){
     try{
-      const res = await fetch("http://localhost:8000/predict", {
+      const res = await fetch(/*"http://localhost:8000/predict"*/ "https://blockbuild-ai-u4d8.onrender.com/predict", {
             method: "POST",
             headers:{
               "Content-Type": "application/json",
@@ -1860,7 +1860,7 @@ useEffect(() => {
         //noiseLevel: noiseLevel,
         };
         try{
-        const res = await fetch(/*"https://blockbuild-ai-u4d8.onrender.com/train"*/"http://localhost:8000/train"/*`${API_URL}/train`*/, {
+        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/train"/*"http://localhost:8000/train"*//*`${API_URL}/train`*/, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify(payload),
@@ -1939,8 +1939,7 @@ useEffect(() => {
           datasetName: dataset,
           //noiseLevel: noiseLevel,
         }
-        // http://localhost:8000
-        const res = await fetch(/*"https://blockbuild-ai-u4d8.onrender.com/train_dataset"*/"http://localhost:8000/train_dataset", {
+        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/train_dataset"/*"http://localhost:8000/train_dataset"*/, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify(payload)
@@ -2004,7 +2003,7 @@ useEffect(() => {
           throw new Error("Parsed test input is invalid.");
         }
 
-        const res = await fetch(/*"https://blockbuild-ai-u4d8.onrender.com/run"*/"http://localhost:8000/run"/* `${API_URL}/run`*/, {
+        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/run"/*"http://localhost:8000/run"*//* `${API_URL}/run`*/, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify({
@@ -2039,7 +2038,7 @@ useEffect(() => {
 
       try{
         setTrainingStatus("Testing on dataset...");
-        const res = await fetch(/*"https://blockbuild-ai-u4d8.onrender.com/test_dataset"*/"http://localhost:8000/test_dataset", {
+        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/test_dataset"/*"http://localhost:8000/test_dataset"*/, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify({

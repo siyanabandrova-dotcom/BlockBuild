@@ -5,7 +5,7 @@ const UINode = ({data}) =>{
     const [plotUrl, setPlotUrl] = useState("")
 
     const API_URL = "https://blockbuild-api.onrender.com";
-    const LOCAL_URL = "http://localhost:8000";
+    //const LOCAL_URL = "http://localhost:8000";
 
     useEffect(() => {
         const interval = setInterval(() => {

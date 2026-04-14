@@ -8,6 +8,9 @@ import torch.nn as nn
 import math
 from fastapi.middleware.cors import CORSMiddleware
 
+import torch
+import numpy as np
+
 
 import os
 from torch.utils.data import DataLoader
@@ -357,6 +360,10 @@ def get_tinyimagenet_maps():
 
 
 def forward_once(z):
+        
+        global sorted_nodes
+        
+        #print("SORTED:", sorted_nodes)
         node_outputs = {}
 
         for node in sorted_nodes:
@@ -1113,4 +1120,33 @@ def test_dataset(config: TestConfig):
         "total": total,
         "samples": samples
     }
+
+@app.post("/predict")
+def predict(data: dict):
+    #return {"prediction": 7}
+    image = np.array(data["image"])
+    image = image.reshape(1, 1, 28, 28)
+    #image = image.reshape(1, -1)
+    tensor = torch.tensor(image).float()
+
+    for layer in layers.values():
+        if layer is not None:
+            layer.eval()
+
+    with torch.no_grad():
+        out = forward_once(tensor)
+        pred = torch.argmax(out, dim = 1).item()
+
+    print("OUT:", out)
+
+    if not sorted_nodes:
+        return {
+            "error": "No model loaded / empty graph"
+        }
+
+    return{
+        "prediction": pred,
+        "output": out[0].tolist(),
+    }
+
 
