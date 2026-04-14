@@ -24,8 +24,10 @@ import MatMulNode from "./MatMulNode.jsx";
 import ScaleNode from "./ScaleNode.jsx";
 import MaskNode from "./MaskNode.jsx";
 import UINode from "./UINode.jsx";
+import DrawCanvas from "./DrawCanvas.jsx";
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { useReactFlow } from "reactflow";
 
 
 const NODE_WIDTH = 120;
@@ -62,6 +64,11 @@ export default function Workspace() {
   const [plotUrl, setPlotUrl] = useState("");
   const [position, setPosition] = useState({ x: 100, y: 100 });
   const [dragging, setDragging] = useState(false);
+
+  const [showDraw, setShowDraw] = useState(false);
+  const [drawResult, setDrawResult] = useState(null);
+
+  const reactFlowInstance = useRef(null);
   //const [epoch, setEpoch] = useState(0);
   //const [jobId, setJobId] = useState(null);
   //const [loss, setLoss] = useState(null);
@@ -90,29 +97,33 @@ export default function Workspace() {
     ui: UINode, 
   }), [setNodes]);
 
-  const buttonStyle = {
+  const sectionColors = {
+    core: "#3b82f6",       
+    activation: "#22c55e",  
+    reg: "#ef4444",         
+    conv: "#eab308",        
+    pool: "#f97316",        
+    norm: "#a855f7",        
+    tensor: "#6b7280",      
+    viz: "#14b8a6",
+  }
+
+  const getButtonStyle = (section) => ({
   background: "rgba(255,255,255,0.08)",
-  border: "1px solid rgba(255,255,255,0.2)",
   color: "white",
+  border: `1px solid ${sectionColors[section]}`,
+  borderLeft: `3px solid ${sectionColors[section]}`,
+  //border: "1px solid transparent",
+  //backgroundImage: `linear-gradient(#1e1e1e, #1e1e1e), linear-gradient(45deg, ${sectionColors[section]}, white)`,
+  border: `1px solid ${sectionColors[section]}`,
+  boxShadow: `0 0 6px ${sectionColors[section]}`,
   fontSize: 14,
   cursor: "pointer",
   padding: "8px 14px",
   borderRadius: "10px",
   transition: "all 0.2s ease",
   backdropFilter: "blur(4px)"
-};
-
-const inputStyle = {
-  background: "rgba(255,255,255,0.08)",
-  border: "1px solid rgba(255,255,255,0.2)",
-  color: "white",
-  padding: "8px 10px",
-  borderRadius: "3px",
-  outline: "none",
-  fontSize: 14,
-  transition: "all 0.2s ease",
-  backdropFilter: "blur(4px)"
-};
+});
 
 
 const loadMnistPreset = () => {
@@ -1080,11 +1091,31 @@ useEffect(() => {
         outputSize: 1,
       };
     }
+  
+
+  if (!reactFlowInstance.current) return;
+
+  const reactFlowWrapper = document.querySelector(".react-flow");
+  if (!reactFlowInstance.current) return;
+
+  const { x, y, zoom } = reactFlowInstance.current.getViewport();
+
+  const wrapper = document.querySelector(".react-flow");
+  if (!wrapper) return;
+
+  const { width, height } = wrapper.getBoundingClientRect();
+
+  const position = {
+    x: (-x + width / 2) / zoom,
+    y: (-y + height / 2) / zoom,
+  };
+
+  console.log("POSITION:", position);
 
   const newNode = {
       id: `${Date.now()}`,
       type: "layer",
-      position: { x: 200, y: 200 },
+      position: position,
       data: { 
         type: type,
         ...defaultData,
@@ -1106,10 +1137,28 @@ useEffect(() => {
     setNodes((prev) => [...prev, newNode]);
   };
   const handleAddLinear = () => {
+    if (!reactFlowInstance.current) return;
+
+    const reactFlowWrapper = document.querySelector(".react-flow");
+    if (!reactFlowInstance.current) return;
+
+    const { x, y, zoom } = reactFlowInstance.current.getViewport();
+
+    const wrapper = document.querySelector(".react-flow");
+    if (!wrapper) return;
+
+    const { width, height } = wrapper.getBoundingClientRect();
+
+    const position = {
+      x: (-x + width / 2) / zoom,
+      y: (-y + height / 2) / zoom,
+    };
+
+  console.log("POSITION:", position);
     const newNode = {
       id: crypto.randomUUID(),
       type: "linear",
-      position: { x: 200, y: 200 },
+      position: position,
       data: { label: "Linear", type: "linear", inFeatures: 16, outFeatures: 16 },
       width: NODE_WIDTH,
       height: NODE_HEIGHT
@@ -1118,10 +1167,26 @@ useEffect(() => {
   };
 
   const handleAddReLU = () => {
+     if (!reactFlowInstance.current) return;
+
+    const reactFlowWrapper = document.querySelector(".react-flow");
+    if (!reactFlowInstance.current) return;
+
+    const { x, y, zoom } = reactFlowInstance.current.getViewport();
+
+    const wrapper = document.querySelector(".react-flow");
+    if (!wrapper) return;
+
+    const { width, height } = wrapper.getBoundingClientRect();
+
+    const position = {
+      x: (-x + width / 2) / zoom,
+      y: (-y + height / 2) / zoom,
+    };
     const newNode = {
       id: crypto.randomUUID(),
       type: "relu",
-      position: { x: 200, y: 200 },
+      position: position,
       data: { label: "ReLU", type: "relu" },
       width: NODE_WIDTH,
       height: NODE_HEIGHT
@@ -1130,10 +1195,26 @@ useEffect(() => {
   };
 
   const handleAddDropout = () => {
+     if (!reactFlowInstance.current) return;
+
+    const reactFlowWrapper = document.querySelector(".react-flow");
+    if (!reactFlowInstance.current) return;
+
+    const { x, y, zoom } = reactFlowInstance.current.getViewport();
+
+    const wrapper = document.querySelector(".react-flow");
+    if (!wrapper) return;
+
+    const { width, height } = wrapper.getBoundingClientRect();
+
+    const position = {
+      x: (-x + width / 2) / zoom,
+      y: (-y + height / 2) / zoom,
+    };
     const newNode = {
       id: crypto.randomUUID(),
       type: "dropout",
-      position: {x: 200, y: 200},
+      position: position,
       data: {
         label: "Dropout",
         type: "dropout",
@@ -1146,10 +1227,26 @@ useEffect(() => {
   }
 
   const handleAddLayerNorm = () => {
+     if (!reactFlowInstance.current) return;
+
+    const reactFlowWrapper = document.querySelector(".react-flow");
+    if (!reactFlowInstance.current) return;
+
+    const { x, y, zoom } = reactFlowInstance.current.getViewport();
+
+    const wrapper = document.querySelector(".react-flow");
+    if (!wrapper) return;
+
+    const { width, height } = wrapper.getBoundingClientRect();
+
+    const position = {
+      x: (-x + width / 2) / zoom,
+      y: (-y + height / 2) / zoom,
+    };
     const newNode = {
       id: crypto.randomUUID(),
       type: "layernorm",
-      position: {x: 200, y: 200},
+      position: position,
       data: {
         label: "LayerNorm",
         type: "layernorm",
@@ -1162,11 +1259,27 @@ useEffect(() => {
   }
 
   const handleAddBatchNorm = (mode) => {
+     if (!reactFlowInstance.current) return;
+
+    const reactFlowWrapper = document.querySelector(".react-flow");
+    if (!reactFlowInstance.current) return;
+
+    const { x, y, zoom } = reactFlowInstance.current.getViewport();
+
+    const wrapper = document.querySelector(".react-flow");
+    if (!wrapper) return;
+
+    const { width, height } = wrapper.getBoundingClientRect();
+
+    const position = {
+      x: (-x + width / 2) / zoom,
+      y: (-y + height / 2) / zoom,
+    };
     const is1d = mode === "batchnorm1d";
     const newNode = {
       id: crypto.randomUUID(),
       type: "batchnorm",
-      position: { x: 200, y: 200 },
+      position: position,
       data: {
         //label: "BatchNorm",
         label: is1d ? "BatchNorm1d" : "BatchNorm2d",
@@ -1182,10 +1295,26 @@ useEffect(() => {
 };
 
   const handleAddEmbedding = () =>{
+    if (!reactFlowInstance.current) return;
+
+    const reactFlowWrapper = document.querySelector(".react-flow");
+    if (!reactFlowInstance.current) return;
+
+    const { x, y, zoom } = reactFlowInstance.current.getViewport();
+
+    const wrapper = document.querySelector(".react-flow");
+    if (!wrapper) return;
+
+    const { width, height } = wrapper.getBoundingClientRect();
+
+    const position = {
+      x: (-x + width / 2) / zoom,
+      y: (-y + height / 2) / zoom,
+    };
     const newNode ={
       id: crypto.randomUUID(),
       type: "embedding",
-      position: {x: 200, y: 200},
+      position: position,
       data: {
         label: "Embedding",
         type: "embedding",
@@ -1210,10 +1339,26 @@ useEffect(() => {
   };
   
   const handleAddConcatNode = () =>{
+    if (!reactFlowInstance.current) return;
+
+    const reactFlowWrapper = document.querySelector(".react-flow");
+    if (!reactFlowInstance.current) return;
+
+    const { x, y, zoom } = reactFlowInstance.current.getViewport();
+
+    const wrapper = document.querySelector(".react-flow");
+    if (!wrapper) return;
+
+    const { width, height } = wrapper.getBoundingClientRect();
+
+    const position = {
+      x: (-x + width / 2) / zoom,
+      y: (-y + height / 2) / zoom,
+    };
     const newNode ={
       id: crypto.randomUUID(),
       type: "concat",
-      position: {x: 200, y: 200},
+      position: position,
       data: {
         label: "Concat",
         type: "concat",
@@ -1227,10 +1372,26 @@ useEffect(() => {
   }
 
   const handleAddSoftmaxNode = () =>{
+    if (!reactFlowInstance.current) return;
+
+    const reactFlowWrapper = document.querySelector(".react-flow");
+    if (!reactFlowInstance.current) return;
+
+    const { x, y, zoom } = reactFlowInstance.current.getViewport();
+
+    const wrapper = document.querySelector(".react-flow");
+    if (!wrapper) return;
+
+    const { width, height } = wrapper.getBoundingClientRect();
+
+    const position = {
+      x: (-x + width / 2) / zoom,
+      y: (-y + height / 2) / zoom,
+    };
     const newNode = {
       id: crypto.randomUUID(),
       type: "softmax",
-      position: {x: 200, y: 200},
+      position: position,
       data: {
         label: "Softmax",
         type: "softmax",
@@ -1243,10 +1404,26 @@ useEffect(() => {
   }
 
   const handleAddMatMulNode = () =>{
+    if (!reactFlowInstance.current) return;
+
+    const reactFlowWrapper = document.querySelector(".react-flow");
+    if (!reactFlowInstance.current) return;
+
+    const { x, y, zoom } = reactFlowInstance.current.getViewport();
+
+    const wrapper = document.querySelector(".react-flow");
+    if (!wrapper) return;
+
+    const { width, height } = wrapper.getBoundingClientRect();
+
+    const position = {
+      x: (-x + width / 2) / zoom,
+      y: (-y + height / 2) / zoom,
+    };
     const newNode = {
       id: crypto.randomUUID(),
       type: "matmul",
-      position: {x: 200, y: 200},
+      position: position,
       data: {
         label: "MatMul",
         type: "matmul",
@@ -1258,10 +1435,26 @@ useEffect(() => {
   }
 
   const handleAddScaleNode = () =>{
+    if (!reactFlowInstance.current) return;
+
+    const reactFlowWrapper = document.querySelector(".react-flow");
+    if (!reactFlowInstance.current) return;
+
+    const { x, y, zoom } = reactFlowInstance.current.getViewport();
+
+    const wrapper = document.querySelector(".react-flow");
+    if (!wrapper) return;
+
+    const { width, height } = wrapper.getBoundingClientRect();
+
+    const position = {
+      x: (-x + width / 2) / zoom,
+      y: (-y + height / 2) / zoom,
+    };
     const newNode = {
       id: crypto.randomUUID(),
       type: "scale",
-      position: {x: 200, y: 200},
+      position: position,
       data:{
         label: "Scale",
         type: "scale",
@@ -1273,10 +1466,26 @@ useEffect(() => {
   }
 
   const handleAddMaskNode = () =>{
+    if (!reactFlowInstance.current) return;
+
+    const reactFlowWrapper = document.querySelector(".react-flow");
+    if (!reactFlowInstance.current) return;
+
+    const { x, y, zoom } = reactFlowInstance.current.getViewport();
+
+    const wrapper = document.querySelector(".react-flow");
+    if (!wrapper) return;
+
+    const { width, height } = wrapper.getBoundingClientRect();
+
+    const position = {
+      x: (-x + width / 2) / zoom,
+      y: (-y + height / 2) / zoom,
+    };
     const newNode = {
       id: crypto.randomUUID(),
       type: "mask",
-      position: {x: 200, y: 200},
+      position: position,
       data:{
         label: "Mask",
         type: "mask"
@@ -1288,10 +1497,26 @@ useEffect(() => {
   }
 
   const handleAddUINode = () =>{
+    if (!reactFlowInstance.current) return;
+
+    const reactFlowWrapper = document.querySelector(".react-flow");
+    if (!reactFlowInstance.current) return;
+
+    const { x, y, zoom } = reactFlowInstance.current.getViewport();
+
+    const wrapper = document.querySelector(".react-flow");
+    if (!wrapper) return;
+
+    const { width, height } = wrapper.getBoundingClientRect();
+
+    const position = {
+      x: (-x + width / 2) / zoom,
+      y: (-y + height / 2) / zoom,
+    };
     const newNode = {
       id: crypto.randomUUID(),
       type: "ui",
-      position: {x: 400, y: 100},
+      position: position,
       data:{
         label: "Loss Graph",
       },
@@ -1396,6 +1621,205 @@ useEffect(() => {
     setTrainingStatus("Dataset loaded successfully!")
   };
 
+
+// Process image
+  function preprocessImage(dataUrl){
+    const img = new Image();
+    img.src = dataUrl;
+
+    return new Promise((resolve) => {
+      img.onload = () => {
+
+        // Draw original (280x280)
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = 280;
+        tempCanvas.height = 280;
+        const tctx = tempCanvas.getContext("2d");
+
+        tctx.fillStyle = "black";
+        tctx.fillRect(0, 0, 280, 280);
+        tctx.drawImage(img, 0, 0);
+
+        // Downscale to 28x28
+        const smallCanvas = document.createElement("canvas");
+        smallCanvas.width = 28;
+        smallCanvas.height = 28;
+        const sctx = smallCanvas.getContext("2d");
+
+        sctx.imageSmoothingEnabled = true;
+        sctx.imageSmoothingQuality = "high";
+
+        sctx.drawImage(tempCanvas, 0, 0, 28, 28);
+
+        let imageData = sctx.getImageData(0, 0, 28, 28);
+        let data = imageData.data;
+
+        // Find bounding box
+        let minX = 28, minY = 28, maxX = 0, maxY = 0;
+        let found = false;
+
+        for(let y = 0; y < 28; y++){
+          for(let x = 0; x < 28; x++){
+            const i = (y * 28 + x) * 4;
+            const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
+
+            if(brightness > 50){
+              found = true;
+              minX = Math.min(minX, x);
+              minY = Math.min(minY, y);
+              maxX = Math.max(maxX, x);
+              maxY = Math.max(maxY, y);
+            }
+          }
+        }
+
+        if(!found){
+          resolve(new Array(784).fill(0));
+          return;
+        }
+
+        const boxW = maxX - minX + 1;
+        const boxH = maxY - minY + 1;
+
+        // Crop
+        const cropCanvas = document.createElement("canvas");
+        cropCanvas.width = boxW;
+        cropCanvas.height = boxH;
+        const cctx = cropCanvas.getContext("2d");
+
+        cctx.putImageData(
+          sctx.getImageData(minX, minY, boxW, boxH),
+          0,
+          0
+        );
+
+        // Resize to 20px
+        const scale = 20 / Math.max(boxW, boxH);
+        const newW = Math.round(boxW * scale);
+        const newH = Math.round(boxH * scale);
+
+        const resizedCanvas = document.createElement("canvas");
+        resizedCanvas.width = newW;
+        resizedCanvas.height = newH;
+        const rctx = resizedCanvas.getContext("2d");
+
+        rctx.imageSmoothingEnabled = true;
+        rctx.imageSmoothingQuality = "high";
+
+        rctx.drawImage(cropCanvas, 0, 0, newW, newH);
+
+        // Paste into 28x28 center
+        const finalCanvas = document.createElement("canvas");
+        finalCanvas.width = 28;
+        finalCanvas.height = 28;
+        const fctx = finalCanvas.getContext("2d");
+
+        fctx.fillStyle = "black";
+        fctx.fillRect(0, 0, 28, 28);
+
+        const offsetX = Math.floor((28 - newW) / 2);
+        const offsetY = Math.floor((28 - newH) / 2);
+
+        fctx.drawImage(resizedCanvas, offsetX, offsetY);
+
+        // Center of mass shift
+        let finalData = fctx.getImageData(0, 0, 28, 28);
+        let fdata = finalData.data;
+
+        let sumX = 0, sumY = 0, count = 0;
+
+        for(let y = 0; y < 28; y++){
+          for(let x = 0; x < 28; x++){
+            const i = (y * 28 + x) * 4;
+            const brightness = (fdata[i] + fdata[i+1] + fdata[i+2]) / 3;
+
+            if(brightness > 50){
+              sumX += x;
+              sumY += y;
+              count++;
+            }
+          }
+        }
+
+        if(count > 0){
+          const centerX = sumX / count;
+          const centerY = sumY / count;
+
+          const shiftX = Math.round(14 - centerX);
+          const shiftY = Math.round(14 - centerY);
+
+          const shiftedCanvas = document.createElement("canvas");
+          shiftedCanvas.width = 28;
+          shiftedCanvas.height = 28;
+          const shctx = shiftedCanvas.getContext("2d");
+
+          shctx.fillStyle = "black";
+          shctx.fillRect(0, 0, 28, 28);
+
+          shctx.putImageData(finalData, shiftX, shiftY);
+
+          finalData = shctx.getImageData(0, 0, 28, 28);
+          fdata = finalData.data;
+        }
+
+        // Normalize
+        const pixels = [];
+        for(let i = 0; i < fdata.length; i += 4){
+          const r = fdata[i];
+          const g = fdata[i + 1];
+          const b = fdata[i + 2];
+
+          let gray = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+          // MNIST normalization
+          gray = (gray - 0.1307) / 0.3081;
+
+          pixels.push(gray);
+        }
+
+        resolve(pixels);
+      };
+    });
+}
+
+  async function sendToBackend(pixels){
+    try{
+      const res = await fetch("http://localhost:8000/predict", {
+            method: "POST",
+            headers:{
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ image: pixels }),
+        });
+
+      console.log("Response status:", res.status);
+
+      const data = await res.json();
+          
+      console.log("Response data:", data);
+
+      return data;
+    
+    } catch(err){
+      console.error("FETCH ERROR:", err);
+      throw err;
+    }
+    
+  }
+
+  const handleDrawPredict = async (dataUrl) => {
+    const pixels = await preprocessImage(dataUrl);
+
+    const res = await sendToBackend(pixels);
+
+    setDrawResult(res);
+  }
+
+  const closeDraw = () => {
+    setShowDraw(false);
+    setDrawResult(null);
+  };
+
   
   // Train
   const handleTrain = async () =>{
@@ -1436,7 +1860,7 @@ useEffect(() => {
         //noiseLevel: noiseLevel,
         };
         try{
-        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/train"/*"http://localhost:8000/train_dataset"/*`${API_URL}/train`*/, {
+        const res = await fetch(/*"https://blockbuild-ai-u4d8.onrender.com/train"*/"http://localhost:8000/train"/*`${API_URL}/train`*/, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify(payload),
@@ -1516,7 +1940,7 @@ useEffect(() => {
           //noiseLevel: noiseLevel,
         }
         // http://localhost:8000
-        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/train_dataset"/*"http://localhost:8000/train_dataset"*/, {
+        const res = await fetch(/*"https://blockbuild-ai-u4d8.onrender.com/train_dataset"*/"http://localhost:8000/train_dataset", {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify(payload)
@@ -1580,7 +2004,7 @@ useEffect(() => {
           throw new Error("Parsed test input is invalid.");
         }
 
-        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/run"/*"http://localhost:8000/run"/* `${API_URL}/run`*/, {
+        const res = await fetch(/*"https://blockbuild-ai-u4d8.onrender.com/run"*/"http://localhost:8000/run"/* `${API_URL}/run`*/, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify({
@@ -1615,7 +2039,7 @@ useEffect(() => {
 
       try{
         setTrainingStatus("Testing on dataset...");
-        const res = await fetch("https://blockbuild-ai-u4d8.onrender.com/test_dataset"/*"http://localhost:8000/test_dataset"*/, {
+        const res = await fetch(/*"https://blockbuild-ai-u4d8.onrender.com/test_dataset"*/"http://localhost:8000/test_dataset", {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify({
@@ -1684,9 +2108,9 @@ useEffect(() => {
 
         <div style={{ position: "relative" }}>
         <button 
-        style={buttonStyle}
+        style={getButtonStyle("core")}
         onClick={() => setOpen(open === "core" ? null : "core")}>
-          🟦 Core Layers
+          Core Layers
         </button>
 
         {open === "core" && (
@@ -1706,9 +2130,9 @@ useEffect(() => {
 
       <div style={{ position: "relative" }}>
       <button 
-      style={buttonStyle}
+      style={getButtonStyle("activation")}
       onClick={() => setOpen(open === "activation" ? null : "activation")}>
-        🟩 Activations
+        Activations
       </button>
 
       {open === "activation" && (
@@ -1728,9 +2152,9 @@ useEffect(() => {
 
 
     <div style={{ position: "relative" }}>
-      <button style={buttonStyle}
+      <button style={getButtonStyle("reg")}
       onClick={() => setOpen(open === "reg" ? null : "reg")}>
-        🟥Regularizations
+        Regularizations
       </button>
 
       {open === "reg" && (
@@ -1749,9 +2173,9 @@ useEffect(() => {
 
     <div style={{ position: "relative" }}>
       <button 
-      style={buttonStyle}
+      style={getButtonStyle("conv")}
       onClick={() => setOpen(open === "conv" ? null : "conv")}>
-        🟨Convolution
+        Convolution
       </button>
 
       {open === "conv" && (
@@ -1784,9 +2208,9 @@ useEffect(() => {
 
     <div style={{ position: "relative" }}>
       <button 
-      style={buttonStyle}
+      style={getButtonStyle("pool")}
       onClick={() => setOpen(open === "pool" ? null : "pool")}>
-        🟧Pooling
+        Pooling
       </button>
 
       {open === "pool" && (
@@ -1827,9 +2251,9 @@ useEffect(() => {
 
     <div style={{ position: "relative" }}>
       <button 
-      style={buttonStyle}
+      style={getButtonStyle("norm")}
       onClick={() => setOpen(open === "norm" ? null : "norm")}>
-        🟪 Normalization
+        Normalization
       </button>
 
       {open === "norm" && (
@@ -1849,9 +2273,9 @@ useEffect(() => {
 
     <div style={{ position: "relative" }}>
       <button
-      style={buttonStyle}
+      style={getButtonStyle("tensor")}
        onClick={() => setOpen(open === "tensor" ? null : "tensor")}>
-        ⬛Tensor Ops
+        Tensor Ops
       </button>
 
       {open === "tensor" && (
@@ -1888,9 +2312,9 @@ useEffect(() => {
 
     <div style={{ position: "relative" }}>
       <button 
-      style={buttonStyle}
+      style={getButtonStyle("viz")}
       onClick={() => setOpen(open === "viz" ? null : "viz")}>
-        📊  Visualisation
+        Visualisation
       </button>
 
       {open === "viz" && (
@@ -2057,6 +2481,49 @@ useEffect(() => {
               <p>{trainStatus}</p>
             </>
 
+            <div>
+            <button onClick={() => setShowDraw(true)}>
+              Try Drawing
+            </button>
+
+            {showDraw && (
+              <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: "100vw",
+                height: "100vh",
+                background: "rgba(0,0,0,0.6)",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                zIndex: 9999,
+              }}>
+                <div 
+                style={{
+                  background: "white",
+                  padding: 20,
+                  borderRadius: 10,
+                  textAlign: "center",
+                }}>
+                  <h2 style ={{ marginTop: 10, color: "black"}}>Draw a digit</h2>
+                  <DrawCanvas onPredict={handleDrawPredict} />
+
+                  {drawResult && (
+                    <div style ={{ marginTop: 10, color: "black"}}>
+                      <strong> Prediction: </strong> {drawResult.prediction}
+                    </div> 
+                  )}
+                  <button onClick={closeDraw}  style={{ marginTop: 10 }}>
+                    Close
+                  </button>
+
+                </div>
+              </div>
+            )}
+            </div>
+
           </div> 
         )}
 
@@ -2188,6 +2655,11 @@ useEffect(() => {
         onEdgesChange={handleEdgesChange}
         onConnect={onConnect}
         onNodeDragStop={onNodeDragStop}
+        //onInit={(instance) => (reactFlowInstance.current = instance)}
+        onInit={(instance) => {
+          console.log("INIT:", instance); // 👈 важно
+          reactFlowInstance.current = instance;
+        }}
         fitView
       >
         {/*<Background />

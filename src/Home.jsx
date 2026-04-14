@@ -166,20 +166,19 @@ export default function Home(){
                     <div  style={cardStyle} 
                         onClick = {() => navigate("/workspace", {state: {preset: "mnist"}})}
                         onMouseEnter={(e) => {
-                        e.target.style.transform = "scale(1.05)";
-                        e.target.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)";
+                        e.currentTarget.style.transform = "scale(1.05)";
+                        e.currentTarget.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)";
                         }}
 
                         onMouseLeave={(e) => {
-                        e.target.style.transform = "scale(1)";
-                        e.target.style.boxShadow = "none";
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.boxShadow = "none";
                         }}
                         >
                         <h3> MNIST Classifier </h3>
 
                         <p style={{ opacity: 0.8 }}>
                         Neural network trained on the MNIST dataset.
-                        Achieved 93% training accuracy and 95% test accuracy for 4 epochs.
                         </p>
                         
                     </div>
@@ -187,19 +186,18 @@ export default function Home(){
                     <div style = {cardStyle}
                         onClick={() => navigate("/workspace", {state: {preset: "fashion"}})}
                         onMouseEnter={(e) => {
-                            e.target.style.transform = "scale(1.05)";
-                            e.target.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
+                            e.currentTarget.style.transform = "scale(1.05)";
+                            e.currentTarget.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
                         }}
 
                         onMouseLeave={(e) => {
-                        e.target.style.transform = "scale(1)";
-                        e.target.style.boxShadow = "none";
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.boxShadow = "none";
                         }}
                         >
                         <h3> Fashion-MNIST Classifier </h3>
                         <p style={{ opacity: 0.8 }}>
                             Image classifier for black-and-white clothes images.    
-                            Achieved 87% training accuracy and 85% test accuracy for 8 epochs.
                         </p>
                     </div>
 
@@ -213,13 +211,13 @@ export default function Home(){
                     <div style = {cardStyle}
                         onClick={() => navigate("/workspace", {state: {preset: "forex"}})}
                         onMouseEnter={(e) => {
-                            e.target.style.transform = "scale(1.05)";
-                            e.target.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
+                            e.currentTarget.style.transform = "scale(1.05)";
+                            e.currentTarget.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
                         }}
 
                         onMouseLeave={(e) => {
-                        e.target.style.transform = "scale(1)";
-                        e.target.style.boxShadow = "none";
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.boxShadow = "none";
                         }}>
                         <h3> Forex Trade Prediction </h3>
                         <p style={{ opacity: 0.8 }}>
@@ -246,13 +244,13 @@ export default function Home(){
                     <div style = {cardStyle}
                         onClick={() => navigate("/workspace", {state: {preset: "housing"}})}
                         onMouseEnter={(e) => {
-                            e.target.style.transform = "scale(1.05)";
-                            e.target.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
+                            e.currentTarget.style.transform = "scale(1.05)";
+                            e.currentTarget.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
                         }}
 
                         onMouseLeave={(e) => {
-                        e.target.style.transform = "scale(1)";
-                        e.target.style.boxShadow = "none";
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.boxShadow = "none";
                         }}>
                         <h3> Housing Prices Prediction </h3> 
                         <p style={{ opacity: 0.8 }}>
@@ -265,13 +263,13 @@ export default function Home(){
                     <div style = {cardStyle}
                         onClick={() => navigate("/workspace", {state: {preset: "cifar10"}})}
                         onMouseEnter={(e) => {
-                            e.target.style.transform = "scale(1.05)";
-                            e.target.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
+                            e.currentTarget.style.transform = "scale(1.05)";
+                            e.currentTarget.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
                         }}
 
                         onMouseLeave={(e) => {
-                        e.target.style.transform = "scale(1)";
-                        e.target.style.boxShadow = "none";
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.boxShadow = "none";
                         }}>
                         <h3> CIFAR-10 Convolution Neural Network </h3>
                         <p style={{ opacity: 0.8 }}>
@@ -282,13 +280,13 @@ export default function Home(){
                     <div style = {cardStyle}
                         onClick={() => navigate("/workspace", {state: {preset: "cifar100"}})}
                         onMouseEnter={(e) => {
-                            e.target.style.transform = "scale(1.05)";
-                            e.target.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
+                            e.currentTarget.style.transform = "scale(1.05)";
+                            e.currentTarget.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
                         }}
 
                         onMouseLeave={(e) => {
-                        e.target.style.transform = "scale(1)";
-                        e.target.style.boxShadow = "none";
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.boxShadow = "none";
                         }}>
                         <h3> CIFAR-100 Convolution Neural Network </h3>
                         <p style={{ opacity: 0.8 }}>
@@ -299,13 +297,13 @@ export default function Home(){
                     <div style = {cardStyle}
                         onClick={() => navigate("/workspace", {state: {preset: "tinyimagenet"}})}
                         onMouseEnter={(e) => {
-                            e.target.style.transform = "scale(1.05)";
-                            e.target.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
+                            e.currentTarget.style.transform = "scale(1.05)";
+                            e.currentTarget.style.boxShadow = "0 0 20px rgba(0,212,255,0.6)"
                         }}
 
                         onMouseLeave={(e) => {
-                        e.target.style.transform = "scale(1)";
-                        e.target.style.boxShadow = "none";
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.boxShadow = "none";
                         }}>
                         <h3> Tiny ImageNet Convolution Neural Network </h3>
                         <p style={{ opacity: 0.8 }}>
